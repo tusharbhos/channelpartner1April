@@ -1,0 +1,296 @@
+// lib/api.ts
+// ─────────────────────────────────────────────────────────────────────────────
+// Central API service — replace MOCK data with these real Laravel calls
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+
+// ── Token helpers ─────────────────────────────────────────────────────────────
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("cp_token");
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem("cp_token", token);
+}
+
+export function removeToken(): void {
+  localStorage.removeItem("cp_token");
+}
+
+// ── API Error type ────────────────────────────────────────────────────────────
+export interface ApiError {
+  status?: number;
+  message?: string;
+  errors?: Record<string, string[]>;
+}
+
+// ── Core fetch wrapper ────────────────────────────────────────────────────────
+async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const token = getToken();
+
+  const url = `${BASE_URL}${endpoint}`;
+  console.log("API Request:", url, options.method || "GET");
+
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers ?? {}),
+    },
+  });
+
+  // Check if response is JSON
+  const contentType = res.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    const text = await res.text();
+    console.error("Non-JSON response:", text.substring(0, 500));
+    const error: ApiError = {
+      status: res.status,
+      message:
+        "Server returned non-JSON response. Please check if API endpoint is correct.",
+    };
+    throw error;
+  }
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    // Throw structured error so callers can read .errors / .message
+    const error: ApiError = { status: res.status, ...data };
+    throw error;
+  }
+
+  return data as T;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  TYPES
+// ══════════════════════════════════════════════════════════════════════════════
+
+export interface ApiUser {
+  id: number;
+  name: string;
+  email: string;
+  company_name: string;
+  rera_no: string;
+  phone: string;
+  address: string;
+  role: "user" | "admin";
+  is_active: boolean;
+  email_verified: boolean;
+  created_at: string;
+}
+
+// Project Meeting Interface
+export interface ProjectMeeting {
+  project_name: string;
+  meeting_date: string;
+  meeting_time: string;
+  scheduled_at?: string;
+  updated_at?: string;
+}
+
+// Customer Interface with multiple projects support
+export interface Customer {
+  id: number;
+  user_id: number;
+  nickname: string;
+  secret_code: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  projects?: ProjectMeeting[];  // Array of multiple project meetings
+  // Backward compatibility fields
+  meeting_date?: string;
+  meeting_time?: string;
+  project_name?: string;
+  notes?: string;
+  status: "active" | "inactive" | "converted";
+  created_at: string;
+  updated_at: string;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  AUTH API
+// ══════════════════════════════════════════════════════════════════════════════
+
+export interface RegisterPayload {
+  name: string;
+  company_name: string;
+  rera_no: string;
+  phone: string;
+  email: string;
+  address: string;
+  password: string;
+  password_confirmation: string;
+}
+
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  message: string;
+  user: ApiUser;
+  token: string;
+  email_verified?: boolean;
+}
+
+export const AuthAPI = {
+  register: (payload: RegisterPayload) =>
+    apiFetch<AuthResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  login: (payload: LoginPayload) =>
+    apiFetch<AuthResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  logout: () =>
+    apiFetch<{ message: string }>("/auth/logout", { method: "POST" }),
+
+  me: () => apiFetch<{ user: ApiUser; email_verified: boolean }>("/auth/me"),
+
+  resendVerification: () =>
+    apiFetch<{ message: string }>("/auth/email/resend", { method: "POST" }),
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  ADMIN API
+// ══════════════════════════════════════════════════════════════════════════════
+
+export interface AdminStats {
+  total_users: number;
+  verified_users: number;
+  unverified_users: number;
+  active_users: number;
+}
+
+export type UpdateUserPayload = Partial<
+  Pick<
+    ApiUser,
+    "name" | "company_name" | "rera_no" | "phone" | "address" | "is_active"
+  >
+>;
+
+export const AdminAPI = {
+  stats: () => apiFetch<AdminStats>("/admin/stats"),
+
+  // Users
+  listUsers: (search?: string, verified?: boolean) => {
+    const params = new URLSearchParams();
+    if (search !== undefined) params.set("search", search);
+    if (verified !== undefined) params.set("verified", String(verified));
+    const qs = params.toString() ? `?${params}` : "";
+    return apiFetch<{ data: ApiUser[]; total: number }>(`/admin/users${qs}`);
+  },
+
+  updateUser: (id: number, payload: UpdateUserPayload) =>
+    apiFetch<{ message: string; user: ApiUser }>(`/admin/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteUser: (id: number) =>
+    apiFetch<{ message: string }>(`/admin/users/${id}`, { method: "DELETE" }),
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  CUSTOMER API
+// ══════════════════════════════════════════════════════════════════════════════
+
+export const CustomerAPI = {
+  list: () => apiFetch<{ data: Customer[]; total: number }>("/customers"),
+
+  upcoming: () => apiFetch<{ data: Customer[] }>("/customers/upcoming"),
+
+  generateCode: () =>
+    apiFetch<{ secret_code: string }>("/customers/generate-code", {
+      method: "POST",
+    }),
+
+  create: (data: Partial<Customer>) =>
+    apiFetch<{ message: string; data: Customer }>("/customers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: number, data: Partial<Customer>) =>
+    apiFetch<{ message: string; data: Customer }>(`/customers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: number) =>
+    apiFetch<{ message: string }>(`/customers/${id}`, {
+      method: "DELETE",
+    }),
+
+  get: (id: number) => apiFetch<{ data: Customer }>(`/customers/${id}`),
+
+  // Schedule meeting for a project (adds to projects array)
+  scheduleMeeting: (
+    customerId: number,
+    data: {
+      meeting_date: string;
+      meeting_time: string;
+      project_name: string;
+    },
+  ) =>
+    apiFetch<{ message: string; data: Customer }>(
+      `/customers/${customerId}/schedule-meeting`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    ),
+
+  // Get all project meetings for a customer
+  getProjectMeetings: (customerId: number) =>
+    apiFetch<{
+      data: {
+        customer: string;
+        projects: ProjectMeeting[];
+        upcoming: ProjectMeeting[];
+        completed: ProjectMeeting[];
+      };
+    }>(`/customers/${customerId}/project-meetings`),
+
+  // Update a specific project meeting
+  updateProjectMeeting: (
+    customerId: number,
+    projectName: string,
+    data: {
+      meeting_date: string;
+      meeting_time: string;
+    },
+  ) =>
+    apiFetch<{ message: string; data: Customer }>(
+      `/customers/${customerId}/project-meetings/${encodeURIComponent(projectName)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      },
+    ),
+
+  // Delete a specific project meeting
+  deleteProjectMeeting: (customerId: number, projectName: string) =>
+    apiFetch<{ message: string; data: Customer }>(
+      `/customers/${customerId}/project-meetings/${encodeURIComponent(projectName)}`,
+      {
+        method: "DELETE",
+      },
+    ),
+};
