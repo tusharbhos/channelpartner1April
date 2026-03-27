@@ -569,22 +569,4 @@ input[type="range"]::-moz-range-thumb {
   background: var(--navy-600);
   border: 2px solid #fff;
 }
-
-/* ═══════════════════════════════════════════════════════════════
-   CHECKBOX
-═══════════════════════════════════════════════════════════════ */
-input[type="checkbox"] {
-  accent-color: var(--navy-600);
-  width: 15px; height: 15px;
-  cursor: pointer;
-}
-.input-field {
-  padding-left: 2.5rem !important; /* Ensure enough space for icon */
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.relative {
-  position: relative;
-  width: 100%;
-}
+/* ═══════════════════════════════════════════════════════════════ CHECKBOX ═══════════════════════════════════════════════════════════════ */ input[type="checkbox"] { accent-color: var(--navy-600); width: 15px; height: 15px; cursor: pointer; }.input-field { padding-left: 2.5rem !important; /* Ensure enough space for icon */ width: 100%; box-sizing: border-box; } .relative { position: relative; width: 100%; }

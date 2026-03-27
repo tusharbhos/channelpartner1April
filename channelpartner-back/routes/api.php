@@ -4,6 +4,7 @@
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\ProjectRequestController;
 use Illuminate\Support\Facades\Route;
 
 // ── Health check ──────────────────────────────────────────
@@ -43,7 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}',           [CustomerController::class, 'show']);
         Route::put('/{id}',           [CustomerController::class, 'update']);
         Route::delete('/{id}',        [CustomerController::class, 'destroy']);
-        
+
         // Multiple project meetings endpoints
         Route::post('/{id}/schedule-meeting', [CustomerController::class, 'scheduleMeeting']);
         Route::get('/{id}/project-meetings',  [CustomerController::class, 'getProjectMeetings']);
@@ -57,5 +58,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('users',          [AdminController::class, 'listUsers']);
         Route::put('users/{id}',     [AdminController::class, 'updateUser']);
         Route::delete('users/{id}',  [AdminController::class, 'deleteUser']);
+    });
+    // ── Project Requests ──────────────────────────────────────
+
+    Route::prefix('project-requests')->group(function () {
+        Route::post('/', [ProjectRequestController::class, 'store']);
+        Route::get('/my-requests', [ProjectRequestController::class, 'myRequests']);
+        Route::get('/{id}', [ProjectRequestController::class, 'show']);
+    });
+
+    // Admin endpoints for project requests
+    Route::middleware('admin')->prefix('admin')->group(function () {
+        Route::get('project-requests', [ProjectRequestController::class, 'adminList']);
+        Route::put('project-requests/{id}', [ProjectRequestController::class, 'adminUpdate']);
     });
 });

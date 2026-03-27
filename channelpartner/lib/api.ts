@@ -107,7 +107,7 @@ export interface Customer {
   email?: string;
   phone?: string;
   address?: string;
-  projects?: ProjectMeeting[];  // Array of multiple project meetings
+  projects?: ProjectMeeting[]; // Array of multiple project meetings
   // Backward compatibility fields
   meeting_date?: string;
   meeting_time?: string;
@@ -291,6 +291,81 @@ export const CustomerAPI = {
       `/customers/${customerId}/project-meetings/${encodeURIComponent(projectName)}`,
       {
         method: "DELETE",
+      },
+    ),
+};
+// lib/api.ts - Add these lines
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PROJECT REQUEST API
+// ══════════════════════════════════════════════════════════════════════════════
+
+export interface ProjectRequest {
+  id: number;
+  user_id: number;
+  developer_name: string;
+  project_name: string;
+  manager_name: string;
+  manager_phone: string;
+  manager_email: string;
+  status: "pending" | "contacted" | "activated" | "rejected";
+  notes?: string;
+  contacted_at?: string;
+  activated_at?: string;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    company_name: string;
+  };
+}
+
+export interface CreateProjectRequestPayload {
+  developer_name: string;
+  project_name: string;
+  manager_name: string;
+  manager_phone: string;
+  manager_email: string;
+}
+
+export const ProjectRequestAPI = {
+  // Create new project request
+  create: (payload: CreateProjectRequestPayload) =>
+    apiFetch<{ message: string; data: ProjectRequest }>("/project-requests", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // Get user's own project requests
+  getMyRequests: () =>
+    apiFetch<{ data: ProjectRequest[]; total: number }>(
+      "/project-requests/my-requests",
+    ),
+
+  // Get single project request
+  get: (id: number) =>
+    apiFetch<{ data: ProjectRequest }>(`/project-requests/${id}`),
+
+  // Admin: Get all project requests
+  adminList: (status?: string, search?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (search) params.set("search", search);
+    const qs = params.toString() ? `?${params}` : "";
+    return apiFetch<{ data: ProjectRequest[]; total: number }>(
+      `/admin/project-requests${qs}`,
+    );
+  },
+
+  // Admin: Update project request status
+  adminUpdate: (id: number, payload: { status: string; notes?: string }) =>
+    apiFetch<{ message: string; data: ProjectRequest }>(
+      `/admin/project-requests/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
       },
     ),
 };

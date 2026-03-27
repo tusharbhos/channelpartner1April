@@ -1,4 +1,3 @@
-// app/home/page.tsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -9,6 +8,7 @@ import Footer from "@/components/Footer";
 import SearchBar from "@/components/SearchBar";
 import SidebarFilter from "@/components/SidebarFilter";
 import ScheduleMeetingModal from "@/components/ScheduleMeetingModal";
+import AddProjectModal from "@/components/AddProjectModal";
 import {
   FilterState,
   DEFAULT_FILTERS,
@@ -16,7 +16,19 @@ import {
   ProjectCard,
 } from "@/lib/mockData";
 
-// ── Project Card ───────────────────────────────────────────
+// ── Badge colour map ────────────────────────────────────────
+const BADGE_STYLE: Record<string, { bg: string; text: string }> = {
+  Hot:          { bg: "#fee2e2", text: "#dc2626" },
+  "New Launch": { bg: "#dcfce7", text: "#16a34a" },
+  "Best Seller":{ bg: "#f3e8ff", text: "#9333ea" },
+  Luxury:       { bg: "#fef3c7", text: "#b47a00" },
+};
+const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
+  "Ready to Move":      { bg: "#dcfce7", text: "#16a34a" },
+  "Under Construction": { bg: "#fef3c7", text: "#b47a00" },
+};
+
+// ── Project Card ────────────────────────────────────────────
 function ProjectCardUI({
   project,
   onSchedule,
@@ -24,50 +36,25 @@ function ProjectCardUI({
   project: ProjectCard;
   onSchedule: (name: string) => void;
 }) {
-  const BADGE_STYLE: Record<string, { bg: string; text: string }> = {
-    Hot: { bg: "#fee2e2", text: "#dc2626" },
-    "New Launch": { bg: "#dcfce7", text: "#16a34a" },
-    "Best Seller": { bg: "#f3e8ff", text: "#9333ea" },
-    Luxury: { bg: "#fef3c7", text: "#b47a00" },
-  };
-  const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-    "Ready to Move": { bg: "#dcfce7", text: "#16a34a" },
-    "Under Construction": { bg: "#fef3c7", text: "#b47a00" },
-  };
-  const badge = BADGE_STYLE[project.badge ?? ""] ?? null;
-  const status = STATUS_STYLE[project.status] ?? {
-    bg: "#f1f5f9",
-    text: "#64748b",
-  };
+  const badge  = BADGE_STYLE[project.badge ?? ""] ?? null;
+  const status = STATUS_STYLE[project.status] ?? { bg: "#f1f5f9", text: "#64748b" };
 
   return (
-    <article
-      className="card rounded-2xl overflow-hidden group flex flex-col"
-      style={{ borderRadius: "var(--radius-xl)" }}
-    >
-      {/* Color bar */}
-      <div
-        className="h-1.5 w-full"
-        style={{ background: "var(--gradient-card-top)" }}
-      />
+    <article className="card rounded-2xl overflow-hidden group flex flex-col">
+      {/* Accent stripe */}
+      <div className="card-accent" />
 
-      <div className="p-5 flex flex-col flex-1">
-        {/* Header row */}
+      <div className="p-4 md:p-5 flex flex-col flex-1">
+        {/* Name + badge */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
             <h3
               className="font-bold text-sm leading-snug mb-0.5 truncate transition-colors group-hover:text-blue-700"
-              style={{
-                fontFamily: "var(--font-display)",
-                color: "var(--navy-900)",
-              }}
+              style={{ fontFamily: "var(--font-display)", color: "var(--navy-900)" }}
             >
               {project.name}
             </h3>
-            <p
-              className="text-xs truncate"
-              style={{ color: "var(--color-text-muted)" }}
-            >
+            <p className="text-xs truncate" style={{ color: "var(--color-text-muted)" }}>
               {project.developer}
             </p>
           </div>
@@ -83,74 +70,34 @@ function ProjectCardUI({
 
         {/* Location */}
         <div className="flex items-center gap-1.5 mb-3">
-          <svg
-            className="w-3.5 h-3.5 flex-shrink-0"
-            style={{ color: "var(--color-text-hint)" }}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-            />
+          <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--color-text-hint)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span
-            className="text-xs"
-            style={{ color: "var(--color-text-muted)" }}
-          >
-            {project.location}
-          </span>
+          <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>{project.location}</span>
         </div>
 
         {/* Price */}
-        <p
-          className="text-base font-bold mb-3"
-          style={{
-            fontFamily: "var(--font-display)",
-            color: "var(--gold-700)",
-          }}
-        >
+        <p className="text-base font-bold mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--gold-700)" }}>
           {project.price}
         </p>
 
-        {/* Info grid */}
+        {/* Info chips */}
         <div className="grid grid-cols-2 gap-2 mb-4 flex-1">
           {[
-            { label: "Type", val: project.type },
-            { label: "Area", val: project.area },
+            { label: "Type",       val: project.type },
+            { label: "Area",       val: project.area },
             { label: "Possession", val: project.possession },
             { label: "Units Left", val: `${project.units} units` },
           ].map((info) => (
-            <div
-              key={info.label}
-              className="px-2.5 py-2 rounded-lg"
-              style={{
-                background: "var(--slate-50)",
-                border: "1px solid var(--slate-100)",
-              }}
-            >
-              <p className="text-gray-400 mb-0.5" style={{ fontSize: 10 }}>
-                {info.label}
-              </p>
-              <p
-                className="text-xs font-semibold truncate"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {info.val}
-              </p>
+            <div key={info.label} className="info-chip">
+              <p className="info-chip-label">{info.label}</p>
+              <p className="info-chip-val">{info.val}</p>
             </div>
           ))}
         </div>
 
-        {/* Footer row */}
+        {/* Status + action */}
         <div className="flex items-center justify-between gap-2 mt-auto">
           <span
             className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0"
@@ -158,28 +105,45 @@ function ProjectCardUI({
           >
             {project.status}
           </span>
-          <div className="flex gap-1.5">
-            <button
-              className="btn btn-primary text-xs px-3 py-1.5"
-              style={{ fontSize: "0.75rem", padding: "0.35rem 0.8rem" }}
-            >
-              Details
-            </button>
-            <button
-              onClick={() => onSchedule(project.name)}
-              className="btn btn-gold text-xs px-3 py-1.5"
-              style={{ fontSize: "0.75rem", padding: "0.35rem 0.8rem" }}
-            >
-              📅 Schedule
-            </button>
-          </div>
+          <button
+            onClick={() => onSchedule(project.name)}
+            className="btn btn-gold"
+            style={{ fontSize: "0.75rem", padding: "0.35rem 0.8rem" }}
+          >
+            📅 Schedule
+          </button>
         </div>
       </div>
     </article>
   );
 }
 
-// ── Loading ────────────────────────────────────────────────
+// ── "Don't find your project?" banner ──────────────────────
+function AddProjectBanner({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="add-project-banner">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="add-project-banner-icon">🏗️</div>
+        <div>
+          <p className="font-bold text-sm" style={{ fontFamily: "var(--font-display)", color: "var(--navy-900)" }}>
+            Don't find your project?
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+            Request to activate any project on ChannelPartner.Network
+          </p>
+        </div>
+      </div>
+      <button onClick={onAdd} className="btn btn-primary flex-shrink-0 gap-2" style={{ whiteSpace: "nowrap" }}>
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Add New Project
+      </button>
+    </div>
+  );
+}
+
+// ── Page loader ─────────────────────────────────────────────
 function PageLoader() {
   return (
     <div className="page-loader">
@@ -189,17 +153,18 @@ function PageLoader() {
   );
 }
 
-// ── Home Page ──────────────────────────────────────────────
+// ── Home Page ───────────────────────────────────────────────
 export default function HomePage() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
-  const [search, setSearch] = useState("");
-  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [sidebarOpen,     setSidebarOpen]     = useState(false);
+  const [filters,         setFilters]         = useState<FilterState>(DEFAULT_FILTERS);
+  const [search,          setSearch]          = useState("");
+  const [scheduleOpen,    setScheduleOpen]    = useState(false);
   const [selectedProject, setSelectedProject] = useState("");
-  const [toast, setToast] = useState("");
+  const [toast,           setToast]           = useState("");
+  const [addProjectOpen,  setAddProjectOpen]  = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace("/login");
@@ -208,24 +173,13 @@ export default function HomePage() {
   const filteredProjects = useMemo<ProjectCard[]>(() => {
     return MOCK_PROJECT_CARDS.filter((p) => {
       const q = search.toLowerCase();
-      const matchSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.developer.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q);
-      const matchDev =
-        !filters.developer.length ||
-        filters.developer.some((d) => p.developer.includes(d));
-      const matchLoc =
-        !filters.location.length ||
-        filters.location.some((l) => p.location.includes(l));
-      const matchProj =
-        !filters.projectName.length || filters.projectName.includes(p.name);
-      const matchStatus =
-        !filters.developmentStatus ||
-        filters.developmentStatus === "both" ||
-        (filters.developmentStatus === "under_construction" &&
-          p.status === "Under Construction") ||
+      const matchSearch   = !q || p.name.toLowerCase().includes(q) || p.developer.toLowerCase().includes(q) || p.location.toLowerCase().includes(q);
+      const matchDev      = !filters.developer.length    || filters.developer.some((d) => p.developer.includes(d));
+      const matchLoc      = !filters.location.length     || filters.location.some((l) => p.location.includes(l));
+      const matchProj     = !filters.projectName.length  || filters.projectName.includes(p.name);
+      const matchStatus   =
+        !filters.developmentStatus || filters.developmentStatus === "both" ||
+        (filters.developmentStatus === "under_construction" && p.status === "Under Construction") ||
         (filters.developmentStatus === "ready" && p.status === "Ready to Move");
       return matchSearch && matchDev && matchLoc && matchProj && matchStatus;
     });
@@ -239,34 +193,34 @@ export default function HomePage() {
     filters.intent.length,
     filters.unitTypes.length,
     filters.developmentStatus ? 1 : 0,
-    filters.bestSuited ? 1 : 0,
-    filters.possessionDate ? 1 : 0,
+    filters.bestSuited       ? 1 : 0,
+    filters.possessionDate   ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const handleSchedule = (name: string) => {
     setSelectedProject(name);
     setScheduleOpen(true);
   };
+
   const handleScheduled = () => {
     setToast(`✓ Meeting scheduled for "${selectedProject}"!`);
     setTimeout(() => setToast(""), 3500);
   };
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading)       return <PageLoader />;
   if (!isAuthenticated) return null;
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ background: "var(--color-bg)" }}
-    >
+    <div className="page-root">
       <Header variant="app" />
+
       <SidebarFilter
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         filters={filters}
         onFiltersChange={setFilters}
       />
+
       <ScheduleMeetingModal
         isOpen={scheduleOpen}
         onClose={() => setScheduleOpen(false)}
@@ -274,45 +228,34 @@ export default function HomePage() {
         onScheduled={handleScheduled}
       />
 
+      <AddProjectModal
+        isOpen={addProjectOpen}
+        onClose={() => setAddProjectOpen(false)}
+        userName={user?.name ?? "Channel Partner"}
+        company_name={user?.company_name ?? ""}
+        onSuccess={() => {
+          setToast("✓ Project request submitted successfully!");
+          setTimeout(() => setToast(""), 3500);
+        }}
+      />
+
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 animate-fade-in-up">
-          <div
-            className="flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg"
-            style={{ background: "var(--navy-900)", color: "#fff" }}
-          >
-            <svg
-              className="w-4 h-4 flex-shrink-0"
-              style={{ color: "var(--gold-400)" }}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
+        <div className="toast">
+          <div className="toast-inner">
+            <svg className="w-4 h-4 toast-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-sm font-medium">{toast}</p>
-            <button
-              onClick={() => setToast("")}
-              className="ml-1 opacity-60 hover:opacity-100 text-white"
-            >
-              ×
-            </button>
+            <p>{toast}</p>
+            <button onClick={() => setToast("")} className="toast-close">×</button>
           </div>
         </div>
       )}
 
-      <main className="flex-1" style={{ paddingTop: "var(--header-height)" }}>
-        {/* Banner */}
-        <div
-          className="px-4 md:px-8 py-5"
-          style={{ background: "var(--gradient-header)" }}
-        >
-          <div className="max-w-7xl mx-auto flex justify-end">
+      <main className="page-main">
+        {/* Banner / Search */}
+        <div className="page-banner">
+          <div className="page-banner-inner">
             <SearchBar
               value={search}
               onChange={setSearch}
@@ -324,43 +267,21 @@ export default function HomePage() {
 
         {/* Stats bar */}
         <div className="stats-bar">
-          <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-5 flex-wrap">
+          <div className="stats-bar-inner">
+            <div className="flex items-center gap-4 sm:gap-5 flex-wrap">
               {[
-                {
-                  val: MOCK_PROJECT_CARDS.length,
-                  label: "Total",
-                  color: "var(--navy-700)",
-                },
-                {
-                  val: filteredProjects.length,
-                  label: "Showing",
-                  color: "var(--gold-700)",
-                },
-                {
-                  val: activeFilterCount,
-                  label: "Filters",
-                  color: "var(--purple-600)",
-                },
+                { val: MOCK_PROJECT_CARDS.length, label: "Total",   color: "var(--navy-700)" },
+                { val: filteredProjects.length,   label: "Showing", color: "var(--gold-700)" },
+                { val: activeFilterCount,          label: "Filters", color: "var(--purple-600)" },
               ].map((s) => (
                 <div key={s.label} className="flex items-baseline gap-1.5">
-                  <span className="stat-val" style={{ color: s.color }}>
-                    {s.val}
-                  </span>
+                  <span className="stat-val" style={{ color: s.color }}>{s.val}</span>
                   <span className="stat-label">{s.label}</span>
                 </div>
               ))}
             </div>
             {activeFilterCount > 0 && (
-              <button
-                onClick={() => setFilters(DEFAULT_FILTERS)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                style={{
-                  background: "var(--red-100)",
-                  color: "var(--red-600)",
-                  border: "1px solid rgba(220,38,38,0.2)",
-                }}
-              >
+              <button onClick={() => setFilters(DEFAULT_FILTERS)} className="btn-clear-filter">
                 Clear All Filters
               </button>
             )}
@@ -368,42 +289,29 @@ export default function HomePage() {
         </div>
 
         {/* Grid */}
-        <div className="px-4 md:px-8 py-6 max-w-7xl mx-auto">
+        <div className="page-content">
           {filteredProjects.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-5xl mb-4">🔍</p>
-              <h3
-                className="text-lg font-bold mb-1"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                No projects found
-              </h3>
-              <p
-                className="text-sm mb-5"
-                style={{ color: "var(--color-text-hint)" }}
-              >
-                Try adjusting your search or filters
-              </p>
+            <div className="empty-state">
+              <p className="empty-state-icon">🔍</p>
+              <h3 className="empty-state-title">No projects found</h3>
+              <p className="empty-state-text">Try adjusting your search or filters</p>
               <button
                 className="btn btn-primary"
-                onClick={() => {
-                  setFilters(DEFAULT_FILTERS);
-                  setSearch("");
-                }}
+                onClick={() => { setFilters(DEFAULT_FILTERS); setSearch(""); }}
               >
                 Reset All
               </button>
+              <AddProjectBanner onAdd={() => setAddProjectOpen(true)} />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger">
-              {filteredProjects.map((p) => (
-                <ProjectCardUI
-                  key={p.id}
-                  project={p}
-                  onSchedule={handleSchedule}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 stagger">
+                {filteredProjects.map((p) => (
+                  <ProjectCardUI key={p.id} project={p} onSchedule={handleSchedule} />
+                ))}
+              </div>
+              <AddProjectBanner onAdd={() => setAddProjectOpen(true)} />
+            </>
           )}
         </div>
       </main>
