@@ -1,4 +1,4 @@
-// components/AddProjectModal.tsx - Updated with proper link formatting
+// components/AddProjectModal.tsx
 
 "use client";
 

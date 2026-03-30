@@ -1,28 +1,36 @@
-"use client";
+﻿"use client";
 
-import React, { useState } from "react";
-import {
-  PROJECTS,
-  DEVELOPERS,
-  LOCATIONS,
-  AMENITIES,
-  INTENTS,
-  UNIT_TYPES,
-  DEVELOPMENT_STATUS,
-  BEST_SUITED,
-  FilterState,
-  DEFAULT_FILTERS,
-} from "@/lib/mockData";
+import React, { useMemo, useState } from "react";
+import { DEFAULT_FILTERS, FilterState } from "@/lib/mockData";
+
+export interface SidebarOptions {
+  projects: string[];
+  categories: string[];
+  tags: string[];
+  amenities: string[];
+  intents: string[];
+  developers: string[];
+  locations: string[];
+  developmentStatus: { label: string; value: string }[];
+  bestSuited: { label: string; value: string }[];
+  unitTypes: string[];
+  areaRange: { min: number; max: number };
+  priceRange: { min: number; max: number };
+}
 
 interface SidebarFilterProps {
   isOpen: boolean;
   onClose: () => void;
   filters: FilterState;
   onFiltersChange: (f: FilterState) => void;
+  options: SidebarOptions;
 }
 
-// ── Searchable multi-select dropdown ──────────────────────
-function SearchableDropdown({
+function sanitizeLabel(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function SearchableMultiDropdown({
   label,
   options,
   selected,
@@ -31,14 +39,16 @@ function SearchableDropdown({
   label: string;
   options: string[];
   selected: string[];
-  onChange: (v: string[]) => void;
+  onChange: (value: string[]) => void;
 }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
 
-  const filtered = options.filter((o) =>
-    o.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase().trim();
+    if (!query) return options;
+    return options.filter((opt) => opt.toLowerCase().includes(query));
+  }, [options, search]);
 
   const toggle = (item: string) => {
     onChange(
@@ -53,18 +63,137 @@ function SearchableDropdown({
       <label className="label">{label}</label>
       <div className="relative">
         <button
+  type="button"
+  className="input-field flex items-center justify-between text-left"
+  onClick={() => setOpen((prev) => !prev)}
+>
+  {/* LEFT SIDE */}
+  <div className="flex items-center gap-1 flex-1 overflow-hidden">
+    {selected.length > 0 ? (
+      <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap scrollbar-hide">
+        {selected.map((item) => (
+          <span
+            key={item}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {item}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle(item);
+              }}
+              className="ml-1 text-xs hover:text-red-500"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+    ) : (
+      <span className="text-gray-400 truncate text-xs">
+        Select {label}
+      </span>
+    )}
+  </div>
+
+  {/* RIGHT SIDE (same arrow icon) */}
+  <svg
+    className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${
+      open ? "rotate-180" : ""
+    }`}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M19 9l-7 7-7-7"
+    />
+  </svg>
+</button>
+
+        {open && (
+          <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden">
+            <div className="p-2 border-b border-gray-100">
+              <input
+                type="text"
+                className="input-field text-xs py-1.5"
+                placeholder={`Search ${label}...`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="max-h-44 overflow-y-auto">
+              {filtered.length === 0 ? (
+                <p className="p-3 text-center text-xs text-gray-400">
+                  No options available
+                </p>
+              ) : (
+                filtered.map((item) => (
+                  <label
+                    key={item}
+                    className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(item)}
+                      onChange={() => toggle(item)}
+                    />
+                    <span>{item}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SearchableSingleDropdown({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const current = selected[0] ?? "";
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase().trim();
+    if (!query) return options;
+    return options.filter((opt) => opt.toLowerCase().includes(query));
+  }, [options, search]);
+
+  return (
+    <div className="mb-4">
+      <label className="label">{label}</label>
+      <div className="relative">
+        <button
           type="button"
-          onClick={() => setOpen((p) => !p)}
           className="input-field flex items-center justify-between text-left"
-          style={{ cursor: "pointer" }}
+          onClick={() => setOpen((prev) => !prev)}
         >
-          <span className={selected.length ? "text-gray-800" : "text-gray-400"}>
-            {selected.length
-              ? `${selected.length} selected`
-              : `Select ${label}`}
+          <span
+            className={
+              current ? "text-gray-800 truncate" : "text-gray-400 truncate"
+            }
+          >
+            {current || `Select ${label}`}
           </span>
           <svg
-            className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+            className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -79,58 +208,41 @@ function SearchableDropdown({
         </button>
 
         {open && (
-          <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden">
+          <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden">
             <div className="p-2 border-b border-gray-100">
               <input
                 type="text"
+                className="input-field text-xs py-1.5"
                 placeholder={`Search ${label}...`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="input-field text-xs py-1.5"
-                onClick={(e) => e.stopPropagation()}
               />
             </div>
             <div className="max-h-44 overflow-y-auto">
-              {filtered.length === 0 ? (
-                <p className="text-xs text-gray-400 p-3 text-center">
-                  No results
-                </p>
-              ) : (
-                filtered.map((item) => (
-                  <label
-                    key={item}
-                    className="flex items-center gap-2 px-3 py-2 hover:bg-blue-50 cursor-pointer transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(item)}
-                      onChange={() => toggle(item)}
-                    />
-                    <span className="text-xs text-gray-700">{item}</span>
-                  </label>
-                ))
-              )}
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-blue-50"
+                onClick={() => {
+                  onChange([]);
+                  setOpen(false);
+                }}
+              >
+                Clear selection
+              </button>
+              {filtered.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-blue-50"
+                  onClick={() => {
+                    onChange([item]);
+                    setOpen(false);
+                  }}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
-            {/* selected tags */}
-            {selected.length > 0 && (
-              <div className="p-2 border-t border-gray-100 flex flex-wrap gap-1">
-                {selected.map((s) => (
-                  <span
-                    key={s}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-black"
-                    style={{ background: "var(--color-primary)" }}
-                  >
-                    {s}
-                    <button
-                      onClick={() => toggle(s)}
-                      className="ml-0.5 hover:opacity-75"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -138,8 +250,7 @@ function SearchableDropdown({
   );
 }
 
-// ── Radio group ────────────────────────────────────────────
-function RadioGroup({
+function ChipRadioGroup({
   label,
   options,
   value,
@@ -148,29 +259,29 @@ function RadioGroup({
   label: string;
   options: { label: string; value: string }[];
   value: string;
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
 }) {
   return (
     <div className="mb-4">
       <label className="label">{label}</label>
       <div className="flex flex-wrap gap-2 mt-1">
-        {options.map((o) => (
+        {options.map((opt) => (
           <button
-            key={o.value}
+            key={opt.value}
             type="button"
-            onClick={() => onChange(o.value === value ? "" : o.value)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-              value === o.value
+              value === opt.value
                 ? "text-black border-transparent"
                 : "bg-white border-gray-300 text-gray-600 hover:border-blue-400"
             }`}
             style={
-              value === o.value
+              value === opt.value
                 ? { background: "var(--gradient-btn-blue)" }
                 : {}
             }
+            onClick={() => onChange(opt.value === value ? "" : opt.value)}
           >
-            {o.label}
+            {opt.label}
           </button>
         ))}
       </div>
@@ -178,70 +289,33 @@ function RadioGroup({
   );
 }
 
-// ── Range Slider ───────────────────────────────────────────
-function RangeSlider({
-  label,
-  min,
-  max,
-  value,
-  onChange,
-  format,
-}: {
-  label: string;
-  min: number;
-  max: number;
-  value: number;
-  onChange: (v: number) => void;
-  format: (v: number) => string;
-}) {
-  return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-1">
-        <label className="label mb-0">{label}</label>
-        <span
-          className="text-xs font-bold"
-          style={{ color: "var(--color-secondary)" }}
-        >
-          {format(value)}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full"
-      />
-      <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-        <span>{format(min)}</span>
-        <span>{format(max)}</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Main Sidebar ───────────────────────────────────────────
 export default function SidebarFilter({
   isOpen,
   onClose,
   filters,
   onFiltersChange,
+  options,
 }: SidebarFilterProps) {
-  const update = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
-    onFiltersChange({ ...filters, [key]: val });
+  const update = <K extends keyof FilterState>(
+    key: K,
+    value: FilterState[K],
+  ) => {
+    onFiltersChange({ ...filters, [key]: value });
+  };
 
-  const formatPrice = (v: number) =>
-    v >= 10000000
-      ? `₹${(v / 10000000).toFixed(1)}Cr`
-      : `₹${(v / 100000).toFixed(0)}L`;
-
-  const formatArea = (v: number) => `${v.toLocaleString()} sq.ft`;
-
-  const resetAll = () => onFiltersChange(DEFAULT_FILTERS);
+  const resetAll = () =>
+    onFiltersChange({
+      ...DEFAULT_FILTERS,
+      areaMin: options.areaRange.min,
+      areaMax: options.areaRange.max,
+      priceMin: options.priceRange.min,
+      priceMax: options.priceRange.max,
+    });
 
   const activeCount = [
     filters.projectName.length,
+    filters.categories.length,
+    filters.tags.length,
     filters.developer.length,
     filters.location.length,
     filters.amenities.length,
@@ -250,11 +324,21 @@ export default function SidebarFilter({
     filters.developmentStatus ? 1 : 0,
     filters.bestSuited ? 1 : 0,
     filters.possessionDate ? 1 : 0,
+    filters.possessionWithinYears ? 1 : 0,
+    filters.unitsAvailable ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
+
+  const formatPrice = (value: number) => {
+    if (!Number.isFinite(value)) return "-";
+    if (value >= 10000000) return `Rs ${(value / 10000000).toFixed(2)} Cr`;
+    if (value >= 100000) return `Rs ${(value / 100000).toFixed(1)} L`;
+    return `Rs ${Math.round(value).toLocaleString("en-IN")}`;
+  };
+
+  const years = Array.from({ length: 10 }, (_, idx) => idx + 1);
 
   return (
     <>
-      {/* Backdrop */}
       {isOpen && (
         <div
           className="sidebar-backdrop"
@@ -263,41 +347,39 @@ export default function SidebarFilter({
         />
       )}
 
-      {/* Sidebar panel */}
       <aside
         className={`fixed top-0 left-0 h-full w-80 max-w-[90vw] z-50 flex flex-col transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ background: "white", boxShadow: "var(--shadow-sidebar)" }}
       >
-        {/* Header */}
         <div
-          className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+          className="flex items-center justify-between px-5 py-4 shrink-0"
           style={{ background: "var(--gradient-header)" }}
         >
           <div>
             <h2
-              className="text-black font-bold text-lg"
+              className="text-white font-bold text-lg"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Filters
             </h2>
             {activeCount > 0 && (
-              <p className="text-xs text-black/70">{activeCount} active</p>
+              <p className="text-xs text-white/70">{activeCount} active</p>
             )}
           </div>
           <div className="flex items-center gap-2">
             {activeCount > 0 && (
               <button
                 onClick={resetAll}
-                className="text-xs text-black/80 hover:text-black underline underline-offset-2 transition-colors"
+                className="text-xs text-white/80 hover:text-white underline underline-offset-2 transition-colors"
               >
                 Reset All
               </button>
             )}
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-black transition-colors"
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white"
               aria-label="Close"
             >
               <svg
@@ -317,180 +399,168 @@ export default function SidebarFilter({
           </div>
         </div>
 
-        {/* Active filter chips */}
-        {activeCount > 0 && (
-          <div className="px-4 py-2 border-b border-gray-100 flex flex-wrap gap-1 max-h-20 overflow-y-auto">
-            {[
-              ...filters.projectName,
-              ...filters.developer,
-              ...filters.location,
-              ...filters.amenities,
-              ...filters.intent,
-              ...filters.unitTypes,
-              ...(filters.developmentStatus
-                ? [
-                    DEVELOPMENT_STATUS.find(
-                      (d) => d.value === filters.developmentStatus,
-                    )?.label || "",
-                  ]
-                : []),
-              ...(filters.bestSuited
-                ? [
-                    BEST_SUITED.find((b) => b.value === filters.bestSuited)
-                      ?.label || "",
-                  ]
-                : []),
-            ].map((chip, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs text-black font-medium"
-                style={{ background: "var(--color-secondary)" }}
-              >
-                {chip}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Scrollable filters */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <SearchableDropdown
+          <SearchableMultiDropdown
             label="Project Name"
-            options={PROJECTS}
+            options={options.projects.map(sanitizeLabel)}
             selected={filters.projectName}
-            onChange={(v) => update("projectName", v)}
+            onChange={(value) => update("projectName", value)}
           />
 
-          <SearchableDropdown
-            label="Developer"
-            options={DEVELOPERS}
-            selected={filters.developer}
-            onChange={(v) => update("developer", v)}
+          <SearchableMultiDropdown
+            label="Category"
+            options={options.categories.map(sanitizeLabel)}
+            selected={filters.categories}
+            onChange={(value) => update("categories", value)}
           />
 
-          <SearchableDropdown
-            label="Location"
-            options={LOCATIONS}
-            selected={filters.location}
-            onChange={(v) => update("location", v)}
-          />
-
-          <SearchableDropdown
+          <SearchableMultiDropdown
             label="Amenities"
-            options={AMENITIES}
+            options={options.amenities.map(sanitizeLabel)}
             selected={filters.amenities}
-            onChange={(v) => update("amenities", v)}
+            onChange={(value) => update("amenities", value)}
           />
 
-          <RadioGroup
-            label="Development Status"
-            options={DEVELOPMENT_STATUS}
-            value={filters.developmentStatus}
-            onChange={(v) => update("developmentStatus", v)}
+          <SearchableMultiDropdown
+            label="Unit Type"
+            options={options.unitTypes.map(sanitizeLabel)}
+            selected={filters.unitTypes}
+            onChange={(value) => update("unitTypes", value)}
           />
 
-          <RadioGroup
-            label="Best Suited For"
-            options={BEST_SUITED}
-            value={filters.bestSuited}
-            onChange={(v) => update("bestSuited", v)}
+          <SearchableMultiDropdown
+            label="Tags"
+            options={options.tags.map(sanitizeLabel)}
+            selected={filters.tags}
+            onChange={(value) => update("tags", value)}
           />
 
-          <SearchableDropdown
+          <SearchableMultiDropdown
             label="Intent"
-            options={INTENTS}
+            options={options.intents.map(sanitizeLabel)}
             selected={filters.intent}
-            onChange={(v) => update("intent", v)}
+            onChange={(value) => update("intent", value)}
           />
 
-          {/* Possession Date */}
+          <SearchableSingleDropdown
+            label="Developer"
+            options={options.developers.map(sanitizeLabel)}
+            selected={filters.developer}
+            onChange={(value) => update("developer", value)}
+          />
+
+          <SearchableSingleDropdown
+            label="Location"
+            options={options.locations.map(sanitizeLabel)}
+            selected={filters.location}
+            onChange={(value) => update("location", value)}
+          />
+
+          <ChipRadioGroup
+            label="Development Status"
+            options={options.developmentStatus}
+            value={filters.developmentStatus}
+            onChange={(value) => update("developmentStatus", value)}
+          />
+
+          <ChipRadioGroup
+            label="Best Suited"
+            options={options.bestSuited}
+            value={filters.bestSuited}
+            onChange={(value) => update("bestSuited", value)}
+          />
+
           <div className="mb-4">
             <label className="label">Possession Date</label>
             <input
               type="date"
+              className="input-field"
               value={filters.possessionDate}
               onChange={(e) => update("possessionDate", e.target.value)}
-              className="input-field"
             />
           </div>
 
-          {/* Unit Types – checkboxes */}
           <div className="mb-4">
-            <label className="label">Type of Units</label>
-            <div className="grid grid-cols-2 gap-1 mt-1">
-              {UNIT_TYPES.map((ut) => (
-                <label
-                  key={ut}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-blue-50 cursor-pointer transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={filters.unitTypes.includes(ut)}
-                    onChange={() =>
-                      update(
-                        "unitTypes",
-                        filters.unitTypes.includes(ut)
-                          ? filters.unitTypes.filter((u) => u !== ut)
-                          : [...filters.unitTypes, ut],
-                      )
-                    }
-                  />
-                  <span className="text-xs text-gray-700">{ut}</span>
-                </label>
+            <label className="label">Possession Within (Years)</label>
+            <select
+              className="input-field"
+              value={filters.possessionWithinYears}
+              onChange={(e) =>
+                update("possessionWithinYears", Number(e.target.value))
+              }
+            >
+              <option value={0}>Any time</option>
+              {years.map((year) => (
+                <option
+                  key={year}
+                  value={year}
+                >{`Within ${year} year${year > 1 ? "s" : ""}`}</option>
               ))}
-            </div>
+            </select>
           </div>
 
-          {/* Area range */}
           <div className="mb-4">
-            <label className="label">Area in Sq. Ft.</label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <span className="text-xs text-gray-400 mb-1 block">Low</span>
-                <input
-                  type="number"
-                  value={filters.areaMin}
-                  onChange={(e) => update("areaMin", Number(e.target.value))}
-                  className="input-field text-xs"
-                  placeholder="Min area"
-                  min={200}
-                  max={filters.areaMax}
-                />
-              </div>
-              <div className="flex-1">
-                <span className="text-xs text-gray-400 mb-1 block">High</span>
-                <input
-                  type="number"
-                  value={filters.areaMax}
-                  onChange={(e) => update("areaMax", Number(e.target.value))}
-                  className="input-field text-xs"
-                  placeholder="Max area"
-                  min={filters.areaMin}
-                  max={10000}
-                />
-              </div>
+            <label className="label">Area Range (sq.ft)</label>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                className="input-field text-xs"
+                value={filters.areaMin}
+                min={options.areaRange.min}
+                max={filters.areaMax}
+                onChange={(e) => update("areaMin", Number(e.target.value))}
+              />
+              <input
+                type="number"
+                className="input-field text-xs"
+                value={filters.areaMax}
+                min={filters.areaMin}
+                max={options.areaRange.max}
+                onChange={(e) => update("areaMax", Number(e.target.value))}
+              />
             </div>
           </div>
 
-          <RangeSlider
-            label="Lower Floor Price"
-            min={2000000}
-            max={filters.priceMax}
-            value={filters.priceMin}
-            onChange={(v) => update("priceMin", v)}
-            format={formatPrice}
-          />
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">Min Price</label>
+              <span
+                className="text-xs font-semibold"
+                style={{ color: "var(--color-secondary)" }}
+              >
+                {formatPrice(filters.priceMin)}
+              </span>
+            </div>
+            <input
+              type="range"
+              className="w-full"
+              min={options.priceRange.min}
+              max={filters.priceMax}
+              value={filters.priceMin}
+              onChange={(e) => update("priceMin", Number(e.target.value))}
+            />
+          </div>
 
-          <RangeSlider
-            label="Higher Floor Price"
-            min={filters.priceMin}
-            max={50000000}
-            value={filters.priceMax}
-            onChange={(v) => update("priceMax", v)}
-            format={formatPrice}
-          />
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">Max Price</label>
+              <span
+                className="text-xs font-semibold"
+                style={{ color: "var(--color-secondary)" }}
+              >
+                {formatPrice(filters.priceMax)}
+              </span>
+            </div>
+            <input
+              type="range"
+              className="w-full"
+              min={filters.priceMin}
+              max={options.priceRange.max}
+              value={filters.priceMax}
+              onChange={(e) => update("priceMax", Number(e.target.value))}
+            />
+          </div>
 
-          {/* Units Available */}
           <div className="mb-6">
             <label className="label">Units Available (Min)</label>
             <div className="flex items-center gap-3">
@@ -514,17 +584,16 @@ export default function SidebarFilter({
           </div>
         </div>
 
-        {/* Apply button */}
-        <div className="px-4 pb-5 pt-3 border-t border-gray-100 flex gap-2 flex-shrink-0">
+        <div className="px-4 pb-5 pt-3 border-t border-gray-100 flex gap-2 shrink-0">
           <button
             onClick={resetAll}
-            className="flex-1 py-2.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            className="flex-1 py-2.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-gray-50"
           >
             Reset
           </button>
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-black btn-primary transition-all"
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-black btn-primary"
           >
             Apply Filters
           </button>
