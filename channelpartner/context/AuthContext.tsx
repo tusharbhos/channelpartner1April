@@ -16,23 +16,47 @@ interface User {
   name: string;
   email: string;
   company_name: string;
+  rera_no?: string;
+  phone?: string;
+  city?: string;
+  address?: string;
   role: "user" | "admin";
   email_verified: boolean;
   is_active: boolean;
+  experience_level?: string;
+  primary_market?: string;
+  budget_segments?: string[];
+  max_ticket_size?: string | number;
+  buyer_types?: string[];
+  micro_markets?: string;
+  sell_cities?: string;
+  avg_leads_per_month?: number;
+  avg_site_visits_per_month?: number;
+  avg_closures_per_month?: number;
+  selling_style?: "own_leads" | "developer_leads" | "both";
+  activation_intent?:
+    | "immediately"
+    | "in_7_days"
+    | "in_15_plus_days"
+    | "exploring";
+  commitment_signal?: boolean;
+  available_slots?: string[];
+  channels_used?: string[];
+  onboarding_step?: number;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (
     email: string,
-    password: string
+    password: string,
   ) => Promise<{
     success: boolean;
     error?: string;
     needsVerification?: boolean;
   }>;
   register: (
-    data: RegisterData
+    data: RegisterData,
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
@@ -45,6 +69,7 @@ interface RegisterData {
   company_name: string;
   rera_no: string;
   phone: string;
+  city: string;
   email: string;
   address: string;
   password: string;

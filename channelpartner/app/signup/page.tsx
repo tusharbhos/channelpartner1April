@@ -11,6 +11,7 @@ interface FormData {
   companyName: string;
   reraNo: string;
   phone: string;
+  city: string;
   email: string;
   address: string;
   password: string;
@@ -19,62 +20,51 @@ interface FormData {
 }
 
 const INITIAL: FormData = {
-  name: "", companyName: "", reraNo: "", phone: "",
-  email: "", address: "", password: "", confirmPassword: "", captcha: false,
+  name: "",
+  companyName: "",
+  reraNo: "",
+  phone: "",
+  city: "",
+  email: "",
+  address: "",
+  password: "",
+  confirmPassword: "",
+  captcha: false,
 };
 
-// ── Reusable glass input style ──────────────────────────────
-const glassInput: React.CSSProperties = {
-  display: "block", width: "100%",
-  padding: "0.78rem 1rem",
-  borderRadius: "12px",
-  border: "1.5px solid black",
-  background: "rgba(255,255,255)",
-  backdropFilter: "blur(8px)",
-  fontSize: "0.9rem",
-  color: "#0a1628",
-  outline: "none",
-  fontFamily: "var(--font-body)",
-  transition: "border-color 0.18s, background 0.18s",
+const GlassInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => {
+  const cls = props.className
+    ? `auth-form-input ${props.className}`
+    : "auth-form-input";
+  return <input {...props} className={cls} />;
 };
 
-const GlassInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input
-    {...props}
-    style={glassInput }
-    onFocus={(e) => { e.target.style.border = "1.5px solid rgba(30,69,128,0.7)"; e.target.style.background = "rgba(255,255,255,0.96)"; props.onFocus?.(e); }}
-    onBlur={(e)  => { e.target.style.border = "1.5px solid rgba(255,255,255,0.55)"; e.target.style.background = "rgba(255,255,255,0.82)"; props.onBlur?.(e); }}
-  />
-);
-
-const GlassTextarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-  <textarea
-    {...props}
-    style={{ ...glassInput, resize: "none", border: "1.5px solid black" } as React.CSSProperties}
-    onFocus={(e) => { e.target.style.border = "1.5px solid rgba(30,69,128,0.7)"; e.target.style.background = "rgba(255,255,255,0.96)"; }}
-    onBlur={(e)  => { e.target.style.border = "1.5px solid rgba(255,255,255,0.55)"; e.target.style.background = "rgba(255,255,255,0.82)"; }}
-  />
-);
+const GlassTextarea = (
+  props: React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+) => {
+  const cls = props.className
+    ? `auth-form-input textarea ${props.className}`
+    : "auth-form-input textarea";
+  return <textarea {...props} className={cls} />;
+};
 
 const FieldLabel = ({ children }: { children: React.ReactNode }) => (
-  <label className="label" >
-    {children}
-  </label>
+  <label className="auth-form-label">{children}</label>
 );
 
 const FieldError = ({ msg }: { msg?: string }) =>
-  msg ? <p style={{ color: "#fca5a5", fontSize: "0.72rem", marginTop: "0.25rem" }}>{msg}</p> : null;
+  msg ? <p className="auth-field-error">{msg}</p> : null;
 
 export default function SignupPage() {
   type FormErrors = Partial<Record<keyof FormData, string>>;
   const router = useRouter();
   const { register } = useAuth();
-  const [form, setForm]           = useState<FormData>(INITIAL);
-  const [errors, setErrors]       = useState<FormErrors>({});
-  const [showPw, setShowPw]       = useState(false);
-  const [showCPw, setShowCPw]     = useState(false);
-  const [step, setStep]           = useState(1);
-  const [loading, setLoading]     = useState(false);
+  const [form, setForm] = useState<FormData>(INITIAL);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [showPw, setShowPw] = useState(false);
+  const [showCPw, setShowCPw] = useState(false);
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
   const set = (k: keyof FormData, v: string | boolean) =>
@@ -82,14 +72,17 @@ export default function SignupPage() {
 
   const validate = (): boolean => {
     const e: FormErrors = {};
-    if (!form.name.trim())                                     e.name            = "Name is required";
-    if (!form.reraNo.trim())                                   e.reraNo          = "RERA No is required";
-    if (!form.phone.match(/^\d{10}$/))                         e.phone           = "Enter a valid 10-digit phone";
-    if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))      e.email           = "Enter a valid email";
-    if (!form.address.trim())                                  e.address         = "Address is required";
-    if (form.password.length < 8)                              e.password        = "Min 8 characters";
-    if (form.password !== form.confirmPassword)                e.confirmPassword = "Passwords do not match";
-    if (!form.captcha)                                         e.captcha         = "Please verify you are human";
+    if (!form.name.trim()) e.name = "Name is required";
+    if (!form.reraNo.trim()) e.reraNo = "RERA No is required";
+    if (!form.phone.match(/^\d{10}$/)) e.phone = "Enter a valid 10-digit phone";
+    if (!form.city.trim()) e.city = "City is required";
+    if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
+      e.email = "Enter a valid email";
+    if (!form.address.trim()) e.address = "Address is required";
+    if (form.password.length < 8) e.password = "Min 8 characters";
+    if (form.password !== form.confirmPassword)
+      e.confirmPassword = "Passwords do not match";
+    if (!form.captcha) e.captcha = "Please verify you are human";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -100,13 +93,22 @@ export default function SignupPage() {
     if (!validate()) return;
     setLoading(true);
     const result = await register({
-      name: form.name, company_name: form.companyName, rera_no: form.reraNo,
-      phone: form.phone, email: form.email, address: form.address,
-      password: form.password, password_confirmation: form.confirmPassword,
+      name: form.name,
+      company_name: form.companyName,
+      rera_no: form.reraNo,
+      phone: form.phone,
+      city: form.city,
+      email: form.email,
+      address: form.address,
+      password: form.password,
+      password_confirmation: form.confirmPassword,
     });
     setLoading(false);
     if (result.success) setStep(2);
-    else { setSubmitError(result.error || "Registration failed."); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    else {
+      setSubmitError(result.error || "Registration failed.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   // ── Step 2: Success ────────────────────────────────────────
@@ -118,21 +120,48 @@ export default function SignupPage() {
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
             style={{ background: "var(--gradient-btn-blue)" }}
           >
-            <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-7 h-7 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.8}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
 
-          <h2 className="text-xl font-bold mb-2" style={{ color: "#fff", fontFamily: "var(--font-display)" }}>
+          <h2
+            className="text-xl font-bold mb-2"
+            style={{ color: "#fff", fontFamily: "var(--font-display)" }}
+          >
             Registration Successful!
           </h2>
-          <p className="text-sm mb-5" style={{ color: "rgba(255,255,255,0.75)" }}>
-            Welcome, <b>{form.name}</b>!<br />Check your email to verify your account.
+          <p
+            className="text-sm mb-5"
+            style={{ color: "rgba(255,255,255,0.75)" }}
+          >
+            Welcome, <b>{form.name}</b>!<br />
+            Check your email to verify your account.
           </p>
 
           <div className="alert alert-info mb-5 text-left">
-            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-4 h-4 shrink-0 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <span>Please verify your email before logging in.</span>
           </div>
@@ -140,10 +169,17 @@ export default function SignupPage() {
           <button
             onClick={() => router.push("/login")}
             style={{
-              display: "block", width: "100%", padding: "0.9rem",
-              borderRadius: "12px", border: "none", cursor: "pointer",
-              background: "linear-gradient(135deg, var(--orange-500), var(--orange-600))",
-              color: "#fff", fontWeight: 800, fontSize: "1rem",
+              display: "block",
+              width: "100%",
+              padding: "0.9rem",
+              borderRadius: "12px",
+              border: "none",
+              cursor: "pointer",
+              background:
+                "linear-gradient(135deg, var(--orange-500), var(--orange-600))",
+              color: "#fff",
+              fontWeight: 800,
+              fontSize: "1rem",
               fontFamily: "var(--font-display)",
               boxShadow: "0 4px 18px rgba(249,115,22,0.45)",
             }}
@@ -159,14 +195,28 @@ export default function SignupPage() {
   return (
     <div className="bg-main min-h-screen flex items-center justify-center px-4 py-8">
       <div className="glass-card w-full max-w-2xl px-6 py-7 sm:px-8 sm:py-8 animate-fade-in-up">
-
         {/* Header */}
         <div className="text-center mb-6">
-          <img src="/logo.png" alt="ChannelPartner.Network" style={{ height: "48px", width: "auto", objectFit: "contain", margin: "0 auto 12px" }} />
-          <h1 className="text-xl font-bold mb-1" style={{ color: "black", fontFamily: "var(--font-display)" }}>
+          <img
+            src="/logo.png"
+            alt="ChannelPartner.Network"
+            style={{
+              height: "48px",
+              width: "auto",
+              objectFit: "contain",
+              margin: "0 auto 12px",
+            }}
+          />
+          <h1
+            className="text-xl font-bold mb-1"
+            style={{
+              color: "var(--color-text-primary)",
+              fontFamily: "var(--font-display)",
+            }}
+          >
             Create Your Account
           </h1>
-          <p className="text-sm" style={{ color: "black" }}>
+          <p className="text-sm auth-text-muted">
             Join India's largest channel partner network
           </p>
         </div>
@@ -174,74 +224,155 @@ export default function SignupPage() {
         {/* Submit Error */}
         {submitError && (
           <div className="alert alert-danger mb-5">
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-4 h-4 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             {submitError}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-
           {/* Row 1: Name + Company */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel>Full Name <span style={{ color: "var(--orange-400)" }}>*</span></FieldLabel>
-              <GlassInput type="text" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Rahul Sharma" />
+              <FieldLabel>
+                Full Name <span style={{ color: "var(--orange-400)" }}>*</span>
+              </FieldLabel>
+              <GlassInput
+                type="text"
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="Rahul Sharma"
+              />
               <FieldError msg={errors.name} />
             </div>
             <div>
               <FieldLabel>Company Name</FieldLabel>
-              <GlassInput type="text" value={form.companyName} onChange={(e) => set("companyName", e.target.value)} placeholder="Sharma Realty Pvt Ltd" />
+              <GlassInput
+                type="text"
+                value={form.companyName}
+                onChange={(e) => set("companyName", e.target.value)}
+                placeholder="Sharma Realty Pvt Ltd"
+              />
             </div>
           </div>
 
           {/* Row 2: RERA + Phone */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel>RERA No <span style={{ color: "var(--orange-400)" }}>*</span></FieldLabel>
-              <GlassInput type="text" value={form.reraNo} onChange={(e) => set("reraNo", e.target.value)} placeholder="A51800001234" />
+              <FieldLabel>
+                RERA No <span style={{ color: "var(--orange-400)" }}>*</span>
+              </FieldLabel>
+              <GlassInput
+                type="text"
+                value={form.reraNo}
+                onChange={(e) => set("reraNo", e.target.value)}
+                placeholder="A51800001234"
+              />
               <FieldError msg={errors.reraNo} />
             </div>
             <div>
-              <FieldLabel>Phone Number <span style={{ color: "var(--orange-400)" }}>*</span></FieldLabel>
+              <FieldLabel>
+                Phone Number{" "}
+                <span style={{ color: "var(--orange-400)" }}>*</span>
+              </FieldLabel>
               <GlassInput
-                type="tel" value={form.phone}
-                onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                type="tel"
+                value={form.phone}
+                onChange={(e) =>
+                  set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))
+                }
                 placeholder="9876543210"
               />
               <FieldError msg={errors.phone} />
             </div>
           </div>
 
-          {/* Row 3: Email + Address */}
+          {/* Row 3: City + Email */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <FieldLabel>Email ID <span style={{ color: "var(--orange-400)" }}>*</span></FieldLabel>
-              <GlassInput type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="you@example.com" />
-              <FieldError msg={errors.email} />
+              <FieldLabel>
+                City <span style={{ color: "var(--orange-400)" }}>*</span>
+              </FieldLabel>
+              <GlassInput
+                type="text"
+                value={form.city}
+                onChange={(e) => set("city", e.target.value)}
+                placeholder="Pune"
+              />
+              <FieldError msg={errors.city} />
             </div>
             <div>
-              <FieldLabel>Address <span style={{ color: "var(--orange-400)" }}>*</span></FieldLabel>
-              <GlassTextarea value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="Office / Home address" rows={2} />
+              <FieldLabel>
+                Email ID <span style={{ color: "var(--orange-400)" }}>*</span>
+              </FieldLabel>
+              <GlassInput
+                type="email"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder="you@example.com"
+              />
+              <FieldError msg={errors.email} />
+            </div>
+          </div>
+
+          {/* Row 4: Address */}
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <FieldLabel>
+                Address <span style={{ color: "var(--orange-400)" }}>*</span>
+              </FieldLabel>
+              <GlassTextarea
+                value={form.address}
+                onChange={(e) => set("address", e.target.value)}
+                placeholder="Office / Home address"
+                rows={2}
+              />
               <FieldError msg={errors.address} />
             </div>
           </div>
 
-          {/* Row 4: Password + Confirm */}
+          {/* Row 5: Password + Confirm */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Password */}
             <div>
-              <FieldLabel>Password <span style={{ color: "var(--orange-400)" }}>*</span></FieldLabel>
+              <FieldLabel>
+                Password <span style={{ color: "var(--orange-400)" }}>*</span>
+              </FieldLabel>
               <div className="relative">
                 <GlassInput
-                  type={showPw ? "text" : "password"} value={form.password}
+                  type={showPw ? "text" : "password"}
+                  value={form.password}
                   onChange={(e) => set("password", e.target.value)}
                   placeholder="Min 8 characters"
-                  style={{ ...glassInput, paddingRight: "3.5rem" }}
+                  className="pr-14"
                 />
-                <button type="button" onClick={() => setShowPw(!showPw)}
-                  style={{ position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: "0.8rem", fontWeight: 700, color: "rgba(10,22,40,0.5)" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  style={{
+                    position: "absolute",
+                    right: "1rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    color: "var(--color-text-muted)",
+                  }}
+                >
                   {showPw ? "Hide" : "Show"}
                 </button>
               </div>
@@ -250,16 +381,34 @@ export default function SignupPage() {
 
             {/* Confirm Password */}
             <div>
-              <FieldLabel>Confirm Password <span style={{ color: "var(--orange-400)" }}>*</span></FieldLabel>
+              <FieldLabel>
+                Confirm Password{" "}
+                <span style={{ color: "var(--orange-400)" }}>*</span>
+              </FieldLabel>
               <div className="relative">
                 <GlassInput
-                  type={showCPw ? "text" : "password"} value={form.confirmPassword}
+                  type={showCPw ? "text" : "password"}
+                  value={form.confirmPassword}
                   onChange={(e) => set("confirmPassword", e.target.value)}
                   placeholder="Repeat password"
-                  style={{ ...glassInput, paddingRight: "3.5rem" }}
+                  className="pr-14"
                 />
-                <button type="button" onClick={() => setShowCPw(!showCPw)}
-                  style={{ position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: "0.8rem", fontWeight: 700, color: "rgba(10,22,40,0.5)" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCPw(!showCPw)}
+                  style={{
+                    position: "absolute",
+                    right: "1rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    color: "var(--color-text-muted)",
+                  }}
+                >
                   {showCPw ? "Hide" : "Show"}
                 </button>
               </div>
@@ -270,26 +419,59 @@ export default function SignupPage() {
           {/* CAPTCHA */}
           <div>
             <div
-              className="flex items-center gap-3 p-3"
-              style={{
-                borderRadius: "12px",
-                border: `1.5px solid ${errors.captcha ? "#fca5a5" : "black"}`,
-                background: "rgba(255,255,255,0.18)",
-                backdropFilter: "blur(8px)",
-              }}
+              className={`flex items-center gap-3 p-3 auth-captcha-box ${errors.captcha ? "error" : ""}`}
             >
-              <input type="checkbox" id="captcha" checked={form.captcha} onChange={(e) => set("captcha", e.target.checked)}
-                style={{ width: "18px", border:"1.5px solid black", height: "18px", accentColor: "var(--orange-500)", cursor: "pointer", flexShrink: 0 }} />
-              <label htmlFor="captcha" style={{ fontSize: "0.875rem", color: "black", cursor: "pointer", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                id="captcha"
+                checked={form.captcha}
+                onChange={(e) => set("captcha", e.target.checked)}
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  accentColor: "var(--orange-500)",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              />
+              <label
+                htmlFor="captcha"
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--color-text-primary)",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
+              >
                 I am not a robot
               </label>
               <div className="ml-auto flex flex-col items-center gap-0.5">
-                <svg viewBox="0 0 64 64" fill="none" style={{ width: "28px", height: "28px", opacity: 0.7 }}>
-                  <circle cx="32" cy="32" r="28" stroke="#4285f4" strokeWidth="4" fill="none" />
+                <svg
+                  viewBox="0 0 64 64"
+                  fill="none"
+                  style={{ width: "28px", height: "28px", opacity: 0.7 }}
+                >
+                  <circle
+                    cx="32"
+                    cy="32"
+                    r="28"
+                    stroke="#4285f4"
+                    strokeWidth="4"
+                    fill="none"
+                  />
                   <circle cx="32" cy="32" r="12" fill="#4285f4" opacity="0.2" />
-                  <path d="M20 32a12 12 0 0124 0" stroke="#4285f4" strokeWidth="3" fill="none" />
+                  <path
+                    d="M20 32a12 12 0 0124 0"
+                    stroke="#4285f4"
+                    strokeWidth="3"
+                    fill="none"
+                  />
                 </svg>
-                <span style={{ fontSize: "8px", color: "rgba(255,255,255,0.5)" }}>reCAPTCHA</span>
+                <span
+                  style={{ fontSize: "8px", color: "rgba(255,255,255,0.5)" }}
+                >
+                  reCAPTCHA
+                </span>
               </div>
             </div>
             <FieldError msg={errors.captcha} />
@@ -300,39 +482,69 @@ export default function SignupPage() {
             type="submit"
             disabled={loading}
             style={{
-              display: "block", width: "100%", padding: "0.9rem",
-              borderRadius: "12px", border: "none", cursor: loading ? "not-allowed" : "pointer",
+              display: "block",
+              width: "100%",
+              padding: "0.9rem",
+              borderRadius: "12px",
+              border: "none",
+              cursor: loading ? "not-allowed" : "pointer",
               background: loading
                 ? "rgba(249,115,22,0.6)"
                 : "linear-gradient(135deg, var(--orange-500), var(--orange-600))",
-              color: "#fff", fontWeight: 800, fontSize: "1rem",
+              color: "#fff",
+              fontWeight: 800,
+              fontSize: "1rem",
               fontFamily: "var(--font-display)",
               boxShadow: "0 4px 18px rgba(249,115,22,0.45)",
               transition: "transform 0.15s, box-shadow 0.15s",
             }}
-            onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 24px rgba(249,115,22,0.55)"; } }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 18px rgba(249,115,22,0.45)"; }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow =
+                  "0 6px 24px rgba(249,115,22,0.55)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow =
+                "0 4px 18px rgba(249,115,22,0.45)";
+            }}
           >
-            {loading
-              ? <span className="flex items-center justify-center gap-2">
-                  <span className="spinner" style={{ width: "1rem", height: "1rem", borderWidth: "2px", borderTopColor: "#fff", borderColor: "rgba(255,255,255,0.3)" }} />
-                  Creating account…
-                </span>
-              : "Create Account →"
-            }
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span
+                  className="spinner"
+                  style={{
+                    width: "1rem",
+                    height: "1rem",
+                    borderWidth: "2px",
+                    borderTopColor: "#fff",
+                    borderColor: "rgba(255,255,255,0.3)",
+                  }}
+                />
+                Creating account…
+              </span>
+            ) : (
+              "Create Account →"
+            )}
           </button>
 
           {/* Trust badge */}
           <div className="flex items-center gap-2 justify-center pt-1">
             <span style={{ fontSize: "1rem" }}>✅</span>
-            <p className="text-xs" style={{ color: "black" }}>
+            <p className="text-xs auth-text-main">
               Used by verified Channel Partners across multiple projects
             </p>
           </div>
 
-          <p className="text-center text-sm" style={{ color: "black" }}>
+          <p className="text-center text-sm auth-text-main">
             Already have an account?{" "}
-            <Link href="/login" className="font-bold hover:underline" style={{ color: "var(--orange-400)" }}>
+            <Link
+              href="/login"
+              className="font-bold hover:underline"
+              style={{ color: "var(--orange-600)" }}
+            >
               Log In
             </Link>
           </p>

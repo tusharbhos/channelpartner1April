@@ -137,7 +137,7 @@ export default function DashboardPage() {
       await CustomerAPI.delete(id);
       setCustomers((prev) => prev.filter((c) => c.id !== id));
       setDeleteId(null);
-    } catch { alert("Failed to delete."); }
+    } catch { alert("Failed to archive customer."); }
     finally  { setDeleting(false); }
   };
 
@@ -304,7 +304,7 @@ export default function DashboardPage() {
                               </button>
                               <button
                                 onClick={() => setDeleteId(c.id)}
-                                title="Delete"
+                                title="Archive"
                                 className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
                                 style={{ color:"var(--red-600)" }}
                               >
@@ -429,13 +429,13 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <h3 className="font-bold text-lg mb-1" style={{ color:"var(--navy-900)" }}>Delete Customer?</h3>
-              <p className="text-sm" style={{ color:"var(--color-text-muted)" }}>This cannot be undone.</p>
+              <h3 className="font-bold text-lg mb-1" style={{ color:"var(--navy-900)" }}>Archive Customer?</h3>
+              <p className="text-sm" style={{ color:"var(--color-text-muted)" }}>This will soft delete the customer and hide it from active lists.</p>
             </div>
             <div className="modal-footer">
               <button onClick={() => setDeleteId(null)} className="btn btn-ghost flex-1">Cancel</button>
               <button onClick={() => handleDelete(deleteId)} disabled={deleting} className="btn btn-danger flex-1">
-                {deleting ? "Deleting…" : "Delete"}
+                {deleting ? "Archiving..." : "Archive"}
               </button>
             </div>
           </div>

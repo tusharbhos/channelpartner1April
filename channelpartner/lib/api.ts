@@ -81,10 +81,31 @@ export interface ApiUser {
   company_name: string;
   rera_no: string;
   phone: string;
+  city?: string;
   address: string;
   role: "user" | "admin";
   is_active: boolean;
   email_verified: boolean;
+  experience_level?: string;
+  primary_market?: string;
+  budget_segments?: string[];
+  max_ticket_size?: string | number;
+  buyer_types?: string[];
+  micro_markets?: string;
+  sell_cities?: string;
+  avg_leads_per_month?: number;
+  avg_site_visits_per_month?: number;
+  avg_closures_per_month?: number;
+  selling_style?: "own_leads" | "developer_leads" | "both";
+  activation_intent?:
+    | "immediately"
+    | "in_7_days"
+    | "in_15_plus_days"
+    | "exploring";
+  commitment_signal?: boolean;
+  available_slots?: string[];
+  channels_used?: string[];
+  onboarding_step?: number;
   created_at: string;
 }
 
@@ -114,6 +135,7 @@ export interface Customer {
   project_name?: string;
   notes?: string;
   status: "active" | "inactive" | "converted";
+  is_active?: number;
   created_at: string;
   updated_at: string;
 }
@@ -127,10 +149,40 @@ export interface RegisterPayload {
   company_name: string;
   rera_no: string;
   phone: string;
+  city: string;
   email: string;
   address: string;
   password: string;
   password_confirmation: string;
+}
+
+export interface ProfileUpdatePayload {
+  name?: string;
+  company_name?: string;
+  rera_no?: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+  experience_level?: string;
+  primary_market?: string;
+  budget_segments?: string[];
+  max_ticket_size?: number;
+  buyer_types?: string[];
+  micro_markets?: string;
+  sell_cities?: string;
+  avg_leads_per_month?: number;
+  avg_site_visits_per_month?: number;
+  avg_closures_per_month?: number;
+  selling_style?: "own_leads" | "developer_leads" | "both";
+  activation_intent?:
+    | "immediately"
+    | "in_7_days"
+    | "in_15_plus_days"
+    | "exploring";
+  commitment_signal?: boolean;
+  available_slots?: string[];
+  channels_used?: string[];
+  onboarding_step?: number;
 }
 
 export interface LoginPayload {
@@ -162,6 +214,12 @@ export const AuthAPI = {
     apiFetch<{ message: string }>("/auth/logout", { method: "POST" }),
 
   me: () => apiFetch<{ user: ApiUser; email_verified: boolean }>("/auth/me"),
+
+  updateProfile: (payload: ProfileUpdatePayload) =>
+    apiFetch<{ message: string; user: ApiUser }>("/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
 
   resendVerification: () =>
     apiFetch<{ message: string }>("/auth/email/resend", { method: "POST" }),
@@ -368,4 +426,51 @@ export const ProjectRequestAPI = {
         body: JSON.stringify(payload),
       },
     ),
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  ACTIVATION REQUEST API
+// ══════════════════════════════════════════════════════════════════════════════
+
+export interface ActivationRequestPayload {
+  project_name: string;
+  city: string;
+  google_location: string;
+  units_left_label: string;
+  units_left: number;
+  possession_date: string;
+  price_range: string;
+  location_type: string;
+  unit_structure: string;
+  buyer_type: string;
+  sales_velocity: string;
+  target_timeline: string;
+  developer_positioning: string;
+  contact_name: string;
+  designation: string;
+  phone: string;
+  email: string;
+  developer_name: string;
+  assessment: string | null;
+  submitted_at: string;
+}
+
+export interface ActivationRequestResponse {
+  message: string;
+  data: {
+    id: number;
+    project_name: string;
+    city: string;
+    status: string;
+    created_at: string;
+  };
+}
+
+export const ActivationRequestAPI = {
+  create: (payload: ActivationRequestPayload, token?: string | null) =>
+    apiFetch<ActivationRequestResponse>("/activation-requests", {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: JSON.stringify(payload),
+    }),
 };

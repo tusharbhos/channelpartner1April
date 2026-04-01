@@ -14,41 +14,44 @@ class CustomerController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user  = $request->user();
-        $query = Customer::with('user:id,name,email');
+        $query = Customer::with('user:id,name,email')->where('is_active', 1);
         if (! $user->isAdmin()) $query->where('user_id', $user->id);
 
         if ($search = $request->get('search')) {
-            $query->where(fn($q) => $q
-                ->where('nickname',    'like', "%{$search}%")
-                ->orWhere('secret_code', 'like', "%{$search}%")
-                ->orWhere('name',       'like', "%{$search}%")
-                ->orWhere('phone',      'like', "%{$search}%")
+            $query->where(
+                fn($q) => $q
+                    ->where('nickname',    'like', "%{$search}%")
+                    ->orWhere('secret_code', 'like', "%{$search}%")
+                    ->orWhere('name',       'like', "%{$search}%")
+                    ->orWhere('phone',      'like', "%{$search}%")
             );
         }
 
         $list = $query->orderBy('created_at', 'desc')->get();
-        
+
         // Transform data to include projects
-        $list->transform(function($customer) {
+        $list->transform(function ($customer) {
             $customer->projects = $customer->projects ?? [];
             return $customer;
         });
-        
+
         return response()->json(['data' => $list, 'total' => $list->count()]);
     }
 
     public function upcoming(Request $request): JsonResponse
     {
-        $query = Customer::whereNotNull('meeting_date')
-                         ->where('meeting_date', '>=', now()->toDateString());
+        $query = Customer::where('is_active', 1)
+            ->whereNotNull('meeting_date')
+            ->where('meeting_date', '>=', now()->toDateString());
         if (! $request->user()->isAdmin()) $query->where('user_id', $request->user()->id);
         return response()->json(['data' => $query->orderBy('meeting_date')->get()]);
     }
 
     public function generateCode(): JsonResponse
     {
-        do { $code = 'CP-' . strtoupper(Str::random(6)); }
-        while (Customer::where('secret_code', $code)->exists());
+        do {
+            $code = 'CP-' . strtoupper(Str::random(6));
+        } while (Customer::where('secret_code', $code)->exists());
         return response()->json(['secret_code' => $code]);
     }
 
@@ -65,12 +68,13 @@ class CustomerController extends Controller
         ]);
 
         $customer = Customer::create([
-            ...$v, 
-            'user_id' => $request->user()->id, 
+            ...$v,
+            'user_id' => $request->user()->id,
             'status' => $v['status'] ?? 'active',
-            'projects' => [] // Initialize empty projects array
+            'projects' => [], // Initialize empty projects array
+            'is_active' => 1,
         ]);
-        
+
         return response()->json(['message' => 'Customer added.', 'data' => $customer->load('user:id,name,email')], 201);
     }
 
@@ -100,27 +104,28 @@ class CustomerController extends Controller
 
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $this->findOwned($request, $id)->delete();
-        return response()->json(['message' => 'Customer deleted.']);
+        $customer = $this->findOwned($request, $id);
+        $customer->update(['is_active' => 0]);
+        return response()->json(['message' => 'Customer soft deleted.']);
     }
 
     // New endpoint to schedule meeting for a project
     public function scheduleMeeting(Request $request, int $id): JsonResponse
     {
         $customer = $this->findOwned($request, $id);
-        
+
         $v = $request->validate([
             'meeting_date' => ['required', 'date', 'after_or_equal:today'],
             'meeting_time' => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],
             'project_name' => ['required', 'string', 'max:255'],
         ]);
-        
+
         // Validate 30-min slot
         $this->assertValidSlot($v['meeting_time']);
-        
+
         // Check for conflicts with other projects of same customer
         $this->assertNoConflictForProjects($customer, $v['meeting_date'], $v['meeting_time']);
-        
+
         // Add/Update project meeting
         $customer->addProjectMeeting([
             'project_name' => $v['project_name'],
@@ -128,14 +133,14 @@ class CustomerController extends Controller
             'meeting_time' => $v['meeting_time'],
             'scheduled_at' => now()->toDateTimeString(),
         ]);
-        
+
         // For backward compatibility, also update single meeting fields
         $customer->update([
             'meeting_date' => $v['meeting_date'],
             'meeting_time' => $v['meeting_time'],
             'project_name' => $v['project_name'],
         ]);
-        
+
         return response()->json([
             'message' => 'Meeting scheduled successfully!',
             'data' => $customer->fresh('user:id,name,email')
@@ -160,21 +165,21 @@ class CustomerController extends Controller
     public function updateProjectMeeting(Request $request, int $id, string $projectName): JsonResponse
     {
         $customer = $this->findOwned($request, $id);
-        
+
         $v = $request->validate([
             'meeting_date' => ['required', 'date', 'after_or_equal:today'],
             'meeting_time' => ['required', 'string', 'regex:/^\d{2}:\d{2}$/'],
         ]);
-        
+
         $this->assertValidSlot($v['meeting_time']);
         $this->assertNoConflictForProjects($customer, $v['meeting_date'], $v['meeting_time'], $projectName);
-        
+
         $customer->updateProjectMeeting($projectName, [
             'meeting_date' => $v['meeting_date'],
             'meeting_time' => $v['meeting_time'],
             'updated_at' => now()->toDateTimeString(),
         ]);
-        
+
         return response()->json([
             'message' => 'Project meeting updated successfully!',
             'data' => $customer->fresh()
@@ -186,7 +191,7 @@ class CustomerController extends Controller
     {
         $customer = $this->findOwned($request, $id);
         $customer->removeProjectMeeting($projectName);
-        
+
         return response()->json([
             'message' => 'Project meeting removed successfully!',
             'data' => $customer->fresh()
@@ -197,7 +202,7 @@ class CustomerController extends Controller
 
     private function findOwned(Request $request, int $id): Customer
     {
-        $q = Customer::query();
+        $q = Customer::query()->where('is_active', 1);
         if (! $request->user()->isAdmin()) $q->where('user_id', $request->user()->id);
         return $q->findOrFail($id);
     }
@@ -214,16 +219,17 @@ class CustomerController extends Controller
     {
         $newMins = $this->toMins($time);
         $projects = $customer->projects ?? [];
-        
+
         foreach ($projects as $project) {
             if ($excludeProject && $project['project_name'] === $excludeProject) continue;
             if (!isset($project['meeting_date']) || !isset($project['meeting_time'])) continue;
             if ($project['meeting_date'] !== $date) continue;
-            
+
             if (abs($this->toMins($project['meeting_time']) - $newMins) < 30) {
-                abort(422,
+                abort(
+                    422,
                     "Time conflict: Project \"{$project['project_name']}\" has a meeting at {$this->fmt12($project['meeting_time'])} on this date. " .
-                    "Please choose a time at least 30 minutes apart."
+                        "Please choose a time at least 30 minutes apart."
                 );
             }
         }

@@ -3,6 +3,7 @@
 
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ActivationRequestController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ProjectRequestController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,9 @@ Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
     ->name('verification.verify')
     ->middleware(['signed', 'throttle:6,1']);
 
+// Public: activation request can be submitted without login
+Route::post('activation-requests', [ActivationRequestController::class, 'store']);
+
 // ── Authenticated routes ──────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -31,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('logout',       [AuthController::class, 'logout']);
         Route::get('me',            [AuthController::class, 'me']);
+        Route::put('profile',       [AuthController::class, 'updateProfile']);
         Route::post('email/resend', [AuthController::class, 'resendVerification'])
             ->middleware('throttle:3,1');
     });
@@ -58,6 +63,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('users',          [AdminController::class, 'listUsers']);
         Route::put('users/{id}',     [AdminController::class, 'updateUser']);
         Route::delete('users/{id}',  [AdminController::class, 'deleteUser']);
+        Route::get('activation-requests',      [ActivationRequestController::class, 'adminList']);
+        Route::get('activation-requests/{id}', [ActivationRequestController::class, 'adminShow']);
+        Route::put('activation-requests/{id}', [ActivationRequestController::class, 'adminUpdate']);
+        Route::delete('activation-requests/{id}', [ActivationRequestController::class, 'adminDelete']);
     });
     // ── Project Requests ──────────────────────────────────────
 
