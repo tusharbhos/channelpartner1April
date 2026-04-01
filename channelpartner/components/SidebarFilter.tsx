@@ -8,7 +8,6 @@ export interface SidebarOptions {
   categories: string[];
   tags: string[];
   amenities: string[];
-  intents: string[];
   developers: string[];
   locations: string[];
   developmentStatus: { label: string; value: string }[];
@@ -63,58 +62,58 @@ function SearchableMultiDropdown({
       <label className="label">{label}</label>
       <div className="relative">
         <button
-  type="button"
-  className="input-field flex items-center justify-between text-left"
-  onClick={() => setOpen((prev) => !prev)}
->
-  {/* LEFT SIDE */}
-  <div className="flex items-center gap-1 flex-1 overflow-hidden">
-    {selected.length > 0 ? (
-      <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap scrollbar-hide">
-        {selected.map((item) => (
-          <span
-            key={item}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {item}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggle(item);
-              }}
-              className="ml-1 text-xs hover:text-red-500"
-            >
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-    ) : (
-      <span className="text-gray-400 truncate text-xs">
-        Select {label}
-      </span>
-    )}
-  </div>
+          type="button"
+          className="input-field flex items-center justify-between text-left"
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {/* LEFT SIDE */}
+          <div className="flex items-center gap-1 flex-1 overflow-hidden">
+            {selected.length > 0 ? (
+              <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap scrollbar-hide">
+                {selected.map((item) => (
+                  <span
+                    key={item}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {item}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggle(item);
+                      }}
+                      className="ml-1 text-xs hover:text-red-500"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-gray-400 truncate text-xs">
+                Select {label}
+              </span>
+            )}
+          </div>
 
-  {/* RIGHT SIDE (same arrow icon) */}
-  <svg
-    className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${
-      open ? "rotate-180" : ""
-    }`}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth={2}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M19 9l-7 7-7-7"
-    />
-  </svg>
-</button>
+          {/* RIGHT SIDE (same arrow icon) */}
+          <svg
+            className={`w-4 h-4 text-gray-400 transition-transform shrink-0 ${
+              open ? "rotate-180" : ""
+            }`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </button>
 
         {open && (
           <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden">
@@ -319,15 +318,23 @@ export default function SidebarFilter({
     filters.developer.length,
     filters.location.length,
     filters.amenities.length,
-    filters.intent.length,
     filters.unitTypes.length,
     filters.developmentStatus ? 1 : 0,
     filters.bestSuited ? 1 : 0,
-    filters.possessionDate ? 1 : 0,
     filters.possessionWithinYears ? 1 : 0,
     filters.unitsAvailable ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
-
+  const possessionOptions = [
+    { label: "Any time", value: 0 },
+    { label: "Within 1 month", value: 1 },
+    { label: "Within 3 months", value: 3 },
+    { label: "Within 6 months", value: 6 },
+    { label: "Within 9 months", value: 9 },
+    ...Array.from({ length: 10 }, (_, i) => ({
+      label: `Within ${i + 1} year${i + 1 > 1 ? "s" : ""}`,
+      value: (i + 1) * 12,
+    })),
+  ];
   const formatPrice = (value: number) => {
     if (!Number.isFinite(value)) return "-";
     if (value >= 10000000) return `Rs ${(value / 10000000).toFixed(2)} Cr`;
@@ -400,6 +407,13 @@ export default function SidebarFilter({
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
+          <SearchableSingleDropdown
+            label="Location"
+            options={options.locations.map(sanitizeLabel)}
+            selected={filters.location}
+            onChange={(value) => update("location", value)}
+          />
+
           <SearchableMultiDropdown
             label="Project Name"
             options={options.projects.map(sanitizeLabel)}
@@ -408,7 +422,7 @@ export default function SidebarFilter({
           />
 
           <SearchableMultiDropdown
-            label="Category"
+            label="Intent/Category"
             options={options.categories.map(sanitizeLabel)}
             selected={filters.categories}
             onChange={(value) => update("categories", value)}
@@ -435,25 +449,11 @@ export default function SidebarFilter({
             onChange={(value) => update("tags", value)}
           />
 
-          <SearchableMultiDropdown
-            label="Intent"
-            options={options.intents.map(sanitizeLabel)}
-            selected={filters.intent}
-            onChange={(value) => update("intent", value)}
-          />
-
           <SearchableSingleDropdown
             label="Developer"
             options={options.developers.map(sanitizeLabel)}
             selected={filters.developer}
             onChange={(value) => update("developer", value)}
-          />
-
-          <SearchableSingleDropdown
-            label="Location"
-            options={options.locations.map(sanitizeLabel)}
-            selected={filters.location}
-            onChange={(value) => update("location", value)}
           />
 
           <ChipRadioGroup
@@ -471,17 +471,7 @@ export default function SidebarFilter({
           />
 
           <div className="mb-4">
-            <label className="label">Possession Date</label>
-            <input
-              type="date"
-              className="input-field"
-              value={filters.possessionDate}
-              onChange={(e) => update("possessionDate", e.target.value)}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="label">Possession Within (Years)</label>
+            <label className="label">Possession Within</label>
             <select
               className="input-field"
               value={filters.possessionWithinYears}
@@ -489,37 +479,55 @@ export default function SidebarFilter({
                 update("possessionWithinYears", Number(e.target.value))
               }
             >
-              <option value={0}>Any time</option>
-              {years.map((year) => (
-                <option
-                  key={year}
-                  value={year}
-                >{`Within ${year} year${year > 1 ? "s" : ""}`}</option>
+              {possessionOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="mb-4">
-            <label className="label">Area Range (sq.ft)</label>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="number"
-                className="input-field text-xs"
-                value={filters.areaMin}
-                min={options.areaRange.min}
-                max={filters.areaMax}
-                onChange={(e) => update("areaMin", Number(e.target.value))}
-              />
-              <input
-                type="number"
-                className="input-field text-xs"
-                value={filters.areaMax}
-                min={filters.areaMin}
-                max={options.areaRange.max}
-                onChange={(e) => update("areaMax", Number(e.target.value))}
-              />
-            </div>
-          </div>
+  <div className="flex items-center justify-between mb-1">
+    <label className="label mb-0">Min Area (sq.ft)</label>
+    <span
+      className="text-xs font-semibold"
+      style={{ color: "var(--color-secondary)" }}
+    >
+      {filters.areaMin} sq.ft
+    </span>
+  </div>
+
+  <input
+    type="range"
+    className="w-full"
+    min={options.areaRange.min}
+    max={filters.areaMax}
+    value={filters.areaMin}
+    onChange={(e) => update("areaMin", Number(e.target.value))}
+  />
+</div>
+
+<div className="mb-4">
+  <div className="flex items-center justify-between mb-1">
+    <label className="label mb-0">Max Area (sq.ft)</label>
+    <span
+      className="text-xs font-semibold"
+      style={{ color: "var(--color-secondary)" }}
+    >
+      {filters.areaMax} sq.ft
+    </span>
+  </div>
+
+  <input
+    type="range"
+    className="w-full"
+    min={filters.areaMin}
+    max={options.areaRange.max}
+    value={filters.areaMax}
+    onChange={(e) => update("areaMax", Number(e.target.value))}
+  />
+</div>
 
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1">
@@ -561,7 +569,7 @@ export default function SidebarFilter({
             />
           </div>
 
-          <div className="mb-6">
+          {/* <div className="mb-6">
             <label className="label">Units Available (Min)</label>
             <div className="flex items-center gap-3">
               <input
@@ -581,7 +589,7 @@ export default function SidebarFilter({
                 {filters.unitsAvailable}
               </span>
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="px-4 pb-5 pt-3 border-t border-gray-100 flex gap-2 shrink-0">

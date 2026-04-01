@@ -161,7 +161,7 @@ export default function DashboardPage() {
   const isAdmin = user?.role === "admin";
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background:"var(--color-bg)" }}>
+    <div className="min-h-screen flex flex-col" >
       <Header variant="app" />
 
       <main className="flex-1" style={{ paddingTop:"var(--header-height)" }}>
@@ -205,13 +205,7 @@ export default function DashboardPage() {
 
             {/* Search */}
             <div className="relative w-full sm:w-64 mt-2 sm:mt-0">
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-                style={{ color:"var(--color-text-hint)" }}
-                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
-              </svg>
+              
               <input
                 type="text" value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -250,12 +244,12 @@ export default function DashboardPage() {
                   className="table-responsive rounded-2xl overflow-hidden"
                   style={{ border:"1px solid var(--slate-200)", boxShadow:"var(--shadow-sm)" }}
                 >
-                  <table className="data-table">
+                  <table className="data-table bg-white">
                     <thead>
                       <tr>
                         {[
                           "Nickname","Secret Code",
-                          ...(isAdmin ? ["Agent"] : []),
+                          ...(isAdmin ? ["Channel Partner"] : []),
                           "Customer","Phone","Projects","Meetings","Status","Actions",
                         ].map((h) => <th key={h}>{h}</th>)}
                       </tr>

@@ -1,4 +1,3 @@
-//app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "../context/AuthContext";
@@ -16,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className="bg-main">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

@@ -30,7 +30,6 @@ export type ApiProject = {
   main_logo?: string | null;
   development_status?: string | null;
   best_suited?: string | null;
-  intent?: string | null;
   possession_date?: string | null;
   available_units?: number | null;
   categories?: ApiEntity[];

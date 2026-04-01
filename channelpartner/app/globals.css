@@ -4,7 +4,70 @@
    DESIGN SYSTEM — CHANNELPARTNER.NETWORK
    Midnight Sapphire + Molten Gold · Mobile-First Responsive
 ═══════════════════════════════════════════════════════════════ */
+/* 🔥 GLASS CARD */
+.glass-card {
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 8px 32px rgba(31, 38, 135, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  border-radius: 28px;
+}
+/* globals.css मध्ये add करा */
 
+/* Auth bg override — login/signup pages वर plain bg-main च दिसेल */
+.auth-bg {
+  background: transparent !important;
+}
+
+/* Inner page wrappers transparent ठेवा */
+.page-wrapper {
+  background: transparent;
+  min-height: 100vh;
+}.bg-main {
+  background-image: url('/Mobileimage.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .bg-main {
+    background-image: url('/Desktopimage.webp');
+  }
+}
+
+/* HR Fading Effect */
+.fade-hr {
+  border: none;
+  height: 2px;
+  width: 80%;
+  margin: auto;
+  background: linear-gradient(
+    to right,
+    transparent,
+    white,
+    transparent
+  );
+  opacity: 0.8;
+}
+/* 🔥 RESPONSIVE BACKGROUND */
+.bg-main {
+  background-image: url('/Mobileimage.webp'); /* public folder direct */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .bg-main {
+    background-image: url('/Desktopimage.webp'); /* FIXED */
+  }
+}
 :root {
   /* ── Core Palette ────────────────────────────────────────── */
   --navy-950:  #060e1a;
@@ -116,12 +179,25 @@
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
 }
-
+@media (max-width: 767px) {
+  .bg-main {
+    background-attachment: fixed;   /* mobile वर scroll, fixed नाही */
+  }
+}
+@media (min-width: 768px) {
+  .bg-main {
+    background-attachment: fixed;    /* desktop वर fixed parallax */
+  }
+}
 /* ── Mobile header height ─────────────────────────────────── */
 @media (max-width: 640px) {
   :root { --header-height: 56px; }
 }
-
+.card {
+  background: rgba(255, 255, 255, 0) !important;
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
 /* ── Normalize & Base ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -184,7 +260,7 @@ textarea.input-field { resize: vertical; }
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-secondary);
+  color: black;
   margin-bottom: 0.35rem;
 }
 .req { color: var(--red-600); margin-left: 2px; }
@@ -399,7 +475,7 @@ button.input-field {
 ═══════════════════════════════════════════════════════════════ */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 50;
-  display: flex; align-items: top; justify-content: top;
+  display: flex; align-items: center; justify-content: center;
   padding: 0;
   background: rgba(6,14,26,0.65);
   backdrop-filter: blur(4px);

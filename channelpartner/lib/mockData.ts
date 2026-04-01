@@ -9,7 +9,6 @@ export interface FilterState {
   amenities: string[];
   developmentStatus: string;
   bestSuited: string;
-  intent: string[];
   possessionDate: string;
   possessionWithinYears: number;
   unitTypes: string[];
@@ -29,7 +28,6 @@ export const DEFAULT_FILTERS: FilterState = {
   amenities: [],
   developmentStatus: "",
   bestSuited: "",
-  intent: [],
   possessionDate: "",
   possessionWithinYears: 0,
   unitTypes: [],
