@@ -574,11 +574,10 @@ export default function ActivateProjectPage() {
 
   /* ── Dark result card styles (steps 5 & 6) ── */
   const rCard: React.CSSProperties = {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.08)",
+    border: "1px solid var(--navy-900)",
     borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
+    margin: 16,
   };
   const rTitle: React.CSSProperties = {
     fontFamily: "var(--font-display)",
@@ -988,7 +987,6 @@ export default function ActivateProjectPage() {
             className="glass-card animate-fade-in-up"
             style={{
               padding: "28px",
-              background: "rgba(10,22,40,0.88)",
               backdropFilter: "blur(24px)",
               border: "1px solid rgba(255,255,255,0.12)",
             }}
@@ -1022,7 +1020,7 @@ export default function ActivateProjectPage() {
                   fontFamily: "var(--font-display)",
                   fontWeight: 700,
                   fontSize: "1.3rem",
-                  color: "#fff",
+                  color: "var(--navy-900)",
                 }}
               >
                 Project Distribution Assessment
@@ -1030,7 +1028,7 @@ export default function ActivateProjectPage() {
               <p
                 style={{
                   fontSize: "0.78rem",
-                  color: "rgba(255,255,255,0.5)",
+                  color: "var(--navy-900)",
                   marginTop: 4,
                 }}
               >
@@ -1093,7 +1091,7 @@ export default function ActivateProjectPage() {
                     <span
                       style={{
                         fontSize: "0.82rem",
-                        color: "rgba(255,255,255,0.55)",
+                        color: "var(--navy-900)",
                       }}
                     >
                       {label}
@@ -1102,7 +1100,7 @@ export default function ActivateProjectPage() {
                       style={{
                         fontSize: "0.88rem",
                         fontWeight: 700,
-                        color: "#fff",
+                        color: "var(--navy-900)",
                       }}
                     >
                       {val}
@@ -1116,7 +1114,7 @@ export default function ActivateProjectPage() {
               <p
                 style={{
                   fontSize: "0.75rem",
-                  color: "rgba(255,255,255,0.45)",
+                  color: "var(--navy-900)",
                   marginBottom: 8,
                 }}
               >
@@ -1138,9 +1136,9 @@ export default function ActivateProjectPage() {
                         padding: "4px 12px",
                         borderRadius: 99,
                         background: "rgba(255,255,255,0.08)",
-                        border: "1px solid rgba(255,255,255,0.1)",
+                        border: "1px solid var(--navy-900)",
                         fontSize: "0.75rem",
-                        color: "rgba(255,255,255,0.7)",
+                        color: "var(--navy-900)",
                       }}
                     >
                       {c}
@@ -1151,7 +1149,7 @@ export default function ActivateProjectPage() {
               <p
                 style={{
                   fontSize: "0.75rem",
-                  color: "rgba(255,255,255,0.45)",
+                  color: "var(--navy-900)",
                   marginBottom: 8,
                 }}
               >
@@ -1166,9 +1164,9 @@ export default function ActivateProjectPage() {
                         padding: "4px 12px",
                         borderRadius: 99,
                         background: "rgba(255,255,255,0.08)",
-                        border: "1px solid rgba(255,255,255,0.1)",
+                        border: "1px solid var(--navy-900)",
                         fontSize: "0.75rem",
-                        color: "rgba(255,255,255,0.7)",
+                        color: "var(--navy-900)",
                       }}
                     >
                       {c}
@@ -1191,12 +1189,7 @@ export default function ActivateProjectPage() {
         {step === 6 && assessment && (
           <div
             className="glass-card animate-fade-in-up"
-            style={{
-              padding: "28px",
-              background: "rgba(10,22,40,0.88)",
-              backdropFilter: "blur(24px)",
-              border: "1px solid rgba(255,255,255,0.12)",
-            }}
+           
           >
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <h2
@@ -1204,7 +1197,7 @@ export default function ActivateProjectPage() {
                   fontFamily: "var(--font-display)",
                   fontWeight: 700,
                   fontSize: "1.3rem",
-                  color: "#fff",
+                  color: "var(--navy-900)",
                 }}
               >
                 Activation Investment
@@ -1212,7 +1205,7 @@ export default function ActivateProjectPage() {
               <p
                 style={{
                   fontSize: "0.82rem",
-                  color: "rgba(255,255,255,0.5)",
+                  color: "var(--navy-900)",
                   marginTop: 4,
                 }}
               >
@@ -1228,11 +1221,11 @@ export default function ActivateProjectPage() {
                   "linear-gradient(135deg, rgba(249,115,22,0.12), rgba(249,115,22,0.04))",
                 border: "1.5px solid rgba(249,115,22,0.25)",
                 borderRadius: 20,
-                marginBottom: 20,
+                margin: 20,
               }}
             >
               <p
-                style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}
+                style={{ fontSize: "0.75rem", color: "var(--navy-900)" }}
               >
                 Your activation investment is
               </p>
@@ -1241,7 +1234,7 @@ export default function ActivateProjectPage() {
                   fontFamily: "var(--font-display)",
                   fontWeight: 800,
                   fontSize: "2rem",
-                  color: "#fff",
+                  color: "var(--navy-900)",
                   margin: "8px 0 4px",
                   textShadow: "0 2px 12px rgba(249,115,22,0.3)",
                 }}
@@ -1269,7 +1262,7 @@ export default function ActivateProjectPage() {
                   key={line}
                   style={{
                     fontSize: "0.8rem",
-                    color: "rgba(255,255,255,0.6)",
+                    color: "var(--navy-900)",
                     padding: "6px 0",
                   }}
                 >
@@ -1277,28 +1270,7 @@ export default function ActivateProjectPage() {
                 </p>
               ))}
             </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                padding: "12px 16px",
-                borderRadius: 12,
-                background: "rgba(30,69,128,0.12)",
-                border: "1px solid rgba(30,69,128,0.25)",
-                marginBottom: 20,
-                fontSize: "0.78rem",
-                color: "var(--navy-300)",
-                lineHeight: 1.5,
-              }}
-            >
-              <span style={{ fontSize: "0.9rem", flexShrink: 0 }}>💡</span>
-              <span>
-                This investment aligns with the effort required to activate and
-                convert your current inventory through a controlled channel
-                partner network.
-              </span>
-            </div>
+            
             <button
               className="btn btn-gold"
               style={{ width: "100%" }}
@@ -1311,7 +1283,7 @@ export default function ActivateProjectPage() {
                 className="btn btn-ghost"
                 style={{
                   width: "100%",
-                  color: "rgba(255,255,255,0.6)",
+                  color: "var(--navy-900)",
                   borderColor: "rgba(255,255,255,0.15)",
                 }}
                 onClick={() => setStep(5)}
@@ -1495,7 +1467,7 @@ export default function ActivateProjectPage() {
                 onClick={goNext}
                 disabled={submitting}
               >
-                {submitting ? "Submitting…" : "Submit Activation →"}
+                {submitting ? "Submitting…" : "Submit For Channel Partner Approval →"}
               </button>
               <button
                 className="btn btn-ghost"

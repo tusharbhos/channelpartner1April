@@ -4,6 +4,7 @@
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ActivationRequestController;
+use App\Http\Controllers\Api\CompanyUserController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ProjectRequestController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,8 @@ Route::get('test', fn() => response()->json([
 Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login',    [AuthController::class, 'login']);
+    Route::post('forgot-password/send-code', [AuthController::class, 'sendForgotPasswordCode']);
+    Route::post('forgot-password/reset', [AuthController::class, 'resetPasswordWithCode']);
 });
 
 // Email verification link (signed URL, opened in browser)
@@ -55,6 +58,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/project-meetings',  [CustomerController::class, 'getProjectMeetings']);
         Route::put('/{id}/project-meetings/{projectName}', [CustomerController::class, 'updateProjectMeeting']);
         Route::delete('/{id}/project-meetings/{projectName}', [CustomerController::class, 'deleteProjectMeeting']);
+    });
+
+    // ── Activation Requests (authenticated user approvals) ──────────────
+    Route::prefix('activation-requests')->group(function () {
+        Route::get('/my-projects', [ActivationRequestController::class, 'myProjects']);
+        Route::post('/{id}/approve', [ActivationRequestController::class, 'approve']);
+    });
+
+    // ── Company Users (owner/admin) ─────────────────────
+    Route::prefix('company-users')->group(function () {
+        Route::get('/', [CompanyUserController::class, 'index']);
+        Route::post('/', [CompanyUserController::class, 'store']);
+        Route::get('/{id}', [CompanyUserController::class, 'show']);
+        Route::put('/{id}', [CompanyUserController::class, 'update']);
+        Route::delete('/{id}', [CompanyUserController::class, 'destroy']);
     });
 
     // ── Admin only ────────────────────────────────────────

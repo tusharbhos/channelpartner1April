@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivationRequest;
+use App\Models\ActivationRequestApproval;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -96,6 +97,59 @@ class ActivationRequestController extends Controller
     }
 
     /**
+     * Authenticated user: list all activation projects with approval stats.
+     */
+    public function myProjects(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $projects = ActivationRequest::query()
+            ->withCount('approvals as approval_count')
+            ->withCount([
+                'approvals as my_approval_attempts' => fn($q) => $q->where('user_id', $user->id),
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'data' => $projects,
+            'total' => $projects->count(),
+        ]);
+    }
+
+    /**
+     * Authenticated user: give channel partner approval only once per project.
+     */
+    public function approve(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+
+        $project = ActivationRequest::query()
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $approval = ActivationRequestApproval::firstOrCreate([
+            'activation_request_id' => $project->id,
+            'user_id' => $user->id,
+        ]);
+
+        $project = ActivationRequest::query()
+            ->where('id', $project->id)
+            ->withCount('approvals as approval_count')
+            ->withCount([
+                'approvals as my_approval_attempts' => fn($q) => $q->where('user_id', $user->id),
+            ])
+            ->firstOrFail();
+
+        return response()->json([
+            'message' => $approval->wasRecentlyCreated
+                ? 'Approval recorded successfully.'
+                : 'You have already approved this project.',
+            'data' => $project,
+        ]);
+    }
+
+    /**
      * Admin: List all activation requests.
      */
     public function adminList(Request $request): JsonResponse
@@ -117,10 +171,10 @@ class ActivationRequestController extends Controller
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('project_name', 'like', "%{$search}%")
-                  ->orWhere('developer_name', 'like', "%{$search}%")
-                  ->orWhere('contact_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%");
+                    ->orWhere('developer_name', 'like', "%{$search}%")
+                    ->orWhere('contact_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%");
             });
         }
 

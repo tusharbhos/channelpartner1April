@@ -21,19 +21,13 @@ type ProfileForm = {
   budget_segments: string[];
   max_ticket_size: string;
   buyer_types: string[];
+  project_preference: string[];
   micro_markets: string;
   sell_cities: string;
   avg_leads_per_month: string;
   avg_site_visits_per_month: string;
   avg_closures_per_month: string;
   selling_style: "" | "own_leads" | "developer_leads" | "both";
-  activation_intent:
-    | ""
-    | "immediately"
-    | "in_7_days"
-    | "in_15_plus_days"
-    | "exploring";
-  commitment_signal: "" | "yes" | "no";
   available_slots: string[];
   channels_used: string[];
 };
@@ -44,7 +38,9 @@ const budgetOptions = [
   "1.5CR-3CR",
   "3CR-5CR",
   "5CR-10CR",
-  "10CR+",
+  "10CR-25CR",
+  "25CR-50CR",
+  "50CR+",
 ];
 const buyerTypeOptions = ["End Users", "Investors", "NRIs", "Mix"];
 const slotOptions = ["Weekday evenings", "Weekends", "Flexible"];
@@ -54,6 +50,41 @@ const channelOptions = [
   "Broker Network",
   "NRI Network",
 ];
+const projectPreferenceOptions = [
+  "Ready to Move",
+  "Nearing Possession",
+  "Under Construction",
+  "Premium Projects",
+  "Bulk Inventory Projects",
+];
+const monthlyVolumeOptions = [
+  { label: "1-5", value: "5" },
+  { label: "5-15", value: "15" },
+  { label: "15-50", value: "50" },
+  { label: "50-100", value: "100" },
+  { label: "100-200", value: "200" },
+  { label: "200-500", value: "500" },
+  { label: "500+", value: "501" },
+];
+
+function toVolumeLabel(value: string): string {
+  const found = monthlyVolumeOptions.find((opt) => opt.value === value);
+  return found ? found.label : "-";
+}
+
+function toPrimaryMarketLabel(value: string): string {
+  if (value === "residential") return "Residential";
+  if (value === "commercial") return "Commercial";
+  if (value === "both") return "Both";
+  return "-";
+}
+
+function toSellingStyleLabel(value: ProfileForm["selling_style"]): string {
+  if (value === "own_leads") return "Generate your own leads";
+  if (value === "developer_leads") return "Work on developer leads";
+  if (value === "both") return "Both";
+  return "-";
+}
 
 export default function ProfilePage() {
   const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
@@ -61,6 +92,7 @@ export default function ProfilePage() {
   const [step, setStep] = useState<Step>(1);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [showSummary, setShowSummary] = useState(false);
 
   const [form, setForm] = useState<ProfileForm>(() => ({
     name: user?.name ?? "",
@@ -74,6 +106,7 @@ export default function ProfilePage() {
     budget_segments: user?.budget_segments ?? [],
     max_ticket_size: user?.max_ticket_size ? String(user.max_ticket_size) : "",
     buyer_types: user?.buyer_types ?? [],
+    project_preference: user?.project_preference ?? [],
     micro_markets: user?.micro_markets ?? "",
     sell_cities: user?.sell_cities ?? "",
     avg_leads_per_month: user?.avg_leads_per_month
@@ -86,20 +119,13 @@ export default function ProfilePage() {
       ? String(user.avg_closures_per_month)
       : "",
     selling_style: (user?.selling_style as ProfileForm["selling_style"]) ?? "",
-    activation_intent:
-      (user?.activation_intent as ProfileForm["activation_intent"]) ?? "",
-    commitment_signal:
-      user?.commitment_signal === true
-        ? "yes"
-        : user?.commitment_signal === false
-          ? "no"
-          : "",
     available_slots: user?.available_slots ?? [],
     channels_used: user?.channels_used ?? [],
   }));
 
   useEffect(() => {
     if (!user) return;
+    setShowSummary(true);
     setForm({
       name: user.name ?? "",
       company_name: user.company_name ?? "",
@@ -112,6 +138,7 @@ export default function ProfilePage() {
       budget_segments: user.budget_segments ?? [],
       max_ticket_size: user.max_ticket_size ? String(user.max_ticket_size) : "",
       buyer_types: user.buyer_types ?? [],
+      project_preference: user.project_preference ?? [],
       micro_markets: user.micro_markets ?? "",
       sell_cities: user.sell_cities ?? "",
       avg_leads_per_month: user.avg_leads_per_month
@@ -124,14 +151,6 @@ export default function ProfilePage() {
         ? String(user.avg_closures_per_month)
         : "",
       selling_style: (user.selling_style as ProfileForm["selling_style"]) ?? "",
-      activation_intent:
-        (user.activation_intent as ProfileForm["activation_intent"]) ?? "",
-      commitment_signal:
-        user.commitment_signal === true
-          ? "yes"
-          : user.commitment_signal === false
-            ? "no"
-            : "",
       available_slots: user.available_slots ?? [],
       channels_used: user.channels_used ?? [],
     });
@@ -163,6 +182,7 @@ export default function ProfilePage() {
     key:
       | "budget_segments"
       | "buyer_types"
+      | "project_preference"
       | "available_slots"
       | "channels_used",
     value: string,
@@ -198,6 +218,9 @@ export default function ProfilePage() {
         ? Number(form.max_ticket_size)
         : undefined,
       buyer_types: form.buyer_types.length ? form.buyer_types : undefined,
+      project_preference: form.project_preference.length
+        ? form.project_preference
+        : undefined,
       micro_markets: form.micro_markets || undefined,
       sell_cities: form.sell_cities || undefined,
       avg_leads_per_month: form.avg_leads_per_month
@@ -210,11 +233,6 @@ export default function ProfilePage() {
         ? Number(form.avg_closures_per_month)
         : undefined,
       selling_style: form.selling_style || undefined,
-      activation_intent: form.activation_intent || undefined,
-      commitment_signal:
-        form.commitment_signal === ""
-          ? undefined
-          : form.commitment_signal === "yes",
       available_slots: form.available_slots.length
         ? form.available_slots
         : undefined,
@@ -230,7 +248,7 @@ export default function ProfilePage() {
       if (targetStep) {
         setStep(targetStep);
       } else {
-        router.push("/dashboard");
+        setShowSummary(true);
       }
     } catch {
       setMessage("Save failed. Please try again.");
@@ -260,11 +278,132 @@ export default function ProfilePage() {
                 fontFamily: "var(--font-display)",
               }}
             >
-              Profile Onboarding
+              Help us show you better projects
             </h1>
-            <p className="text-sm auth-text-muted mb-5">Step {step} of 3</p>
+            <p className="text-sm auth-text-muted mb-5">
+              {showSummary ? "Profile Summary" : `Step ${step} of 3`}
+            </p>
 
-            {step === 1 && (
+            {showSummary && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="auth-text-muted">Name:</span>{" "}
+                    {form.name || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Mobile:</span>{" "}
+                    {form.phone || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Company Name:</span>{" "}
+                    {form.company_name || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">RERA No:</span>{" "}
+                    {form.rera_no || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">City:</span>{" "}
+                    {form.city || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Address:</span>{" "}
+                    {form.address || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Experience:</span>{" "}
+                    {form.experience_level || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Primary Market:</span>{" "}
+                    {toPrimaryMarketLabel(form.primary_market)}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Budget Expertise:</span>{" "}
+                    {form.budget_segments.length
+                      ? form.budget_segments.join(", ")
+                      : "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">
+                      Max Ticket Size Handled:
+                    </span>{" "}
+                    {form.max_ticket_size || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Buyer Type:</span>{" "}
+                    {form.buyer_types.length
+                      ? form.buyer_types.join(", ")
+                      : "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Avg Leads/Month:</span>{" "}
+                    {toVolumeLabel(form.avg_leads_per_month)}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">
+                      Avg Site Visits/Month:
+                    </span>{" "}
+                    {toVolumeLabel(form.avg_site_visits_per_month)}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Avg Closures/Month:</span>{" "}
+                    {toVolumeLabel(form.avg_closures_per_month)}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Selling Style:</span>{" "}
+                    {toSellingStyleLabel(form.selling_style)}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Project Preference:</span>{" "}
+                    {form.project_preference.length
+                      ? form.project_preference.join(", ")
+                      : "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Micro-markets:</span>{" "}
+                    {form.micro_markets || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Selling Cities:</span>{" "}
+                    {form.sell_cities || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Available Slots:</span>{" "}
+                    {form.available_slots.length
+                      ? form.available_slots.join(", ")
+                      : "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Channels Used:</span>{" "}
+                    {form.channels_used.length
+                      ? form.channels_used.join(", ")
+                      : "-"}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    className="btn btn-gold"
+                    onClick={() => {
+                      setShowSummary(false);
+                      setStep(1);
+                    }}
+                  >
+                    Update Profile
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    onClick={() => router.push("/dashboard")}
+                  >
+                    Go to Dashboard
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!showSummary && step === 1 && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -337,11 +476,13 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {step === 2 && (
+            {!showSummary && step === 2 && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="auth-form-label">Experience</label>
+                    <label className="auth-form-label">
+                      Experience (in Years)
+                    </label>
                     <select
                       className="auth-form-input"
                       value={form.experience_level}
@@ -352,7 +493,10 @@ export default function ProfilePage() {
                       <option value="">Select</option>
                       <option value="0-2">0-2</option>
                       <option value="2-5">2-5</option>
-                      <option value="5+">5+</option>
+                      <option value="5-10">5-10</option>
+                      <option value="10-15">10-15</option>
+                      <option value="15-20">15-20</option>
+                      <option value="20+">20+</option>
                     </select>
                   </div>
                   <div>
@@ -390,7 +534,9 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="auth-form-label">Max Ticket Size</label>
+                    <label className="auth-form-label">
+                      Max ticket size handled till date
+                    </label>
                     <input
                       className="auth-form-input"
                       value={form.max_ticket_size}
@@ -419,60 +565,65 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="auth-form-label">Avg Leads / Month</label>
-                    <input
+                    <select
                       className="auth-form-input"
                       value={form.avg_leads_per_month}
                       onChange={(e) =>
-                        setValue(
-                          "avg_leads_per_month",
-                          e.target.value.replace(/\D/g, ""),
-                        )
+                        setValue("avg_leads_per_month", e.target.value)
                       }
-                    />
+                    >
+                      <option value="">Select</option>
+                      {monthlyVolumeOptions.map((opt) => (
+                        <option key={`leads-${opt.value}`} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="auth-form-label">
                       Avg Site Visits / Month
                     </label>
-                    <input
+                    <select
                       className="auth-form-input"
                       value={form.avg_site_visits_per_month}
                       onChange={(e) =>
-                        setValue(
-                          "avg_site_visits_per_month",
-                          e.target.value.replace(/\D/g, ""),
-                        )
+                        setValue("avg_site_visits_per_month", e.target.value)
                       }
-                    />
+                    >
+                      <option value="">Select</option>
+                      {monthlyVolumeOptions.map((opt) => (
+                        <option key={`visits-${opt.value}`} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="auth-form-label">
                       Avg Closures / Month
                     </label>
-                    <input
+                    <select
                       className="auth-form-input"
                       value={form.avg_closures_per_month}
                       onChange={(e) =>
-                        setValue(
-                          "avg_closures_per_month",
-                          e.target.value.replace(/\D/g, ""),
-                        )
+                        setValue("avg_closures_per_month", e.target.value)
                       }
-                    />
+                    >
+                      <option value="">Select</option>
+                      {monthlyVolumeOptions.map((opt) => (
+                        <option key={`closures-${opt.value}`} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <div className="flex gap-3">
-                  <button
-                    className="btn btn-ghost"
-                    disabled={saving}
-                    onClick={() => setStep(1)}
-                  >
-                    Back
-                  </button>
                   <button
                     className="btn btn-gold"
                     disabled={saving}
@@ -484,68 +635,46 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {step === 3 && (
+            {!showSummary && step === 3 && (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="auth-form-label">Selling Style</label>
-                    <select
-                      className="auth-form-input"
-                      value={form.selling_style}
-                      onChange={(e) =>
-                        setValue(
-                          "selling_style",
-                          e.target.value as ProfileForm["selling_style"],
-                        )
-                      }
-                    >
-                      <option value="">Select</option>
-                      <option value="own_leads">Generate your own leads</option>
-                      <option value="developer_leads">
-                        Work on developer leads
-                      </option>
-                      <option value="both">Both</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="auth-form-label">Activation Intent</label>
-                    <select
-                      className="auth-form-input"
-                      value={form.activation_intent}
-                      onChange={(e) =>
-                        setValue(
-                          "activation_intent",
-                          e.target.value as ProfileForm["activation_intent"],
-                        )
-                      }
-                    >
-                      <option value="">Select</option>
-                      <option value="immediately">Immediately</option>
-                      <option value="in_7_days">Within 7 days</option>
-                      <option value="in_15_plus_days">15+ days</option>
-                      <option value="exploring">Exploring</option>
-                    </select>
+                <div>
+                  <label className="auth-form-label">Selling Style</label>
+                  <select
+                    className="auth-form-input"
+                    value={form.selling_style}
+                    onChange={(e) =>
+                      setValue(
+                        "selling_style",
+                        e.target.value as ProfileForm["selling_style"],
+                      )
+                    }
+                  >
+                    <option value="">Select</option>
+                    <option value="own_leads">Generate your own leads</option>
+                    <option value="developer_leads">
+                      Work on developer leads
+                    </option>
+                    <option value="both">Both</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="auth-form-label">Project Preference</label>
+                  <div className="flex flex-wrap gap-2">
+                    {projectPreferenceOptions.map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={`btn ${form.project_preference.includes(v) ? "btn-gold" : "btn-ghost"}`}
+                        onClick={() => toggleArray("project_preference", v)}
+                      >
+                        {v}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="auth-form-label">Commitment Signal</label>
-                    <select
-                      className="auth-form-input"
-                      value={form.commitment_signal}
-                      onChange={(e) =>
-                        setValue(
-                          "commitment_signal",
-                          e.target.value as ProfileForm["commitment_signal"],
-                        )
-                      }
-                    >
-                      <option value="">Select</option>
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                    </select>
-                  </div>
                   <div>
                     <label className="auth-form-label">
                       Micro-markets (comma separated)
@@ -558,9 +687,6 @@ export default function ProfilePage() {
                       }
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="auth-form-label">
                       Selling Cities (comma separated)
@@ -571,26 +697,27 @@ export default function ProfilePage() {
                       onChange={(e) => setValue("sell_cities", e.target.value)}
                     />
                   </div>
-                  <div>
-                    <label className="auth-form-label">Available Slots</label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {slotOptions.map((v) => (
-                        <button
-                          key={v}
-                          type="button"
-                          className={`btn ${form.available_slots.includes(v) ? "btn-gold" : "btn-ghost"}`}
-                          onClick={() => toggleArray("available_slots", v)}
-                        >
-                          {v}
-                        </button>
-                      ))}
-                    </div>
+                </div>
+
+                <div>
+                  <label className="auth-form-label">Available Slots</label>
+                  <div className="flex flex-wrap gap-2">
+                    {slotOptions.map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={`btn ${form.available_slots.includes(v) ? "btn-gold" : "btn-ghost"}`}
+                        onClick={() => toggleArray("available_slots", v)}
+                      >
+                        {v}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 <div>
                   <label className="auth-form-label">Channels Used</label>
-                  <div className="flex flex-wrap gap-2 mt-1">
+                  <div className="flex flex-wrap gap-2">
                     {channelOptions.map((v) => (
                       <button
                         key={v}

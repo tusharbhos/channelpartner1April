@@ -10,13 +10,15 @@ interface Props {
 }
 
 export default function AddCustomerModal({ onClose, onAdded }: Props) {
-  const [nickname,   setNickname]   = useState("");
+  const [nickname, setNickname] = useState("");
   const [secretCode, setSecretCode] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [saving,     setSaving]     = useState(false);
-  const [error,      setError]      = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => { generateCode(); }, []);
+  useEffect(() => {
+    generateCode();
+  }, []);
 
   const generateCode = async () => {
     setGenerating(true);
@@ -26,7 +28,10 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
       setSecretCode(res.secret_code);
     } catch {
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-      const code  = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+      const code = Array.from(
+        { length: 8 },
+        () => chars[Math.floor(Math.random() * chars.length)],
+      ).join("");
       setSecretCode(`CP-${code}`);
     } finally {
       setGenerating(false);
@@ -36,14 +41,18 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!nickname.trim()) { setError("Nickname is required."); return; }
-    if (!secretCode.trim()) { setError("Generate a secret code first."); return; }
     setSaving(true);
     try {
-      const res = await CustomerAPI.create({ nickname: nickname.trim(), secret_code: secretCode, status: "active" });
+      const payload: Partial<Customer> = { status: "active" };
+      if (nickname.trim()) payload.nickname = nickname.trim();
+      if (secretCode.trim()) payload.secret_code = secretCode.trim();
+
+      const res = await CustomerAPI.create(payload);
       onAdded(res.data);
     } catch (e: unknown) {
-      setError((e as { message?: string }).message || "Failed to add customer.");
+      setError(
+        (e as { message?: string }).message || "Failed to add customer.",
+      );
     } finally {
       setSaving(false);
     }
@@ -51,7 +60,11 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" style={{ maxWidth: "26rem" }} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-box"
+        style={{ maxWidth: "26rem" }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="modal-header">
           <div>
@@ -59,8 +72,18 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
             <p className="modal-subtitle">Create a new customer entry</p>
           </div>
           <button className="modal-close" onClick={onClose}>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -69,8 +92,18 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
         <form onSubmit={handleSubmit} className="modal-body space-y-4">
           {error && (
             <div className="alert alert-danger">
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-4 h-4 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               {error}
             </div>
@@ -78,9 +111,7 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
 
           {/* Nickname */}
           <div>
-            <label className="label">
-              Nickname <span className="req">*</span>
-            </label>
+            <label className="label">Nickname</label>
             <input
               type="text"
               value={nickname}
@@ -89,7 +120,10 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
               className="input-field"
               autoFocus
             />
-            <p className="text-xs mt-1" style={{ color: "var(--color-text-hint)" }}>
+            <p
+              className="text-xs mt-1"
+              style={{ color: "var(--color-text-hint)" }}
+            >
               Internal alias — only visible to you
             </p>
           </div>
@@ -108,9 +142,14 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
                   borderRadius: "var(--radius-md)",
                 }}
               >
-                {generating
-                  ? <span className="spinner mx-auto" style={{ width: "1rem", height: "1rem" }} />
-                  : secretCode || "—"}
+                {generating ? (
+                  <span
+                    className="spinner mx-auto"
+                    style={{ width: "1rem", height: "1rem" }}
+                  />
+                ) : (
+                  secretCode || "—"
+                )}
               </div>
               <button
                 type="button"
@@ -120,8 +159,18 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
                 title="Regenerate"
                 style={{ borderRadius: "var(--radius-md)" }}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
               </button>
             </div>
@@ -129,27 +178,54 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
 
           {/* Info */}
           <div className="alert alert-info">
-            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-4 h-4 flex-shrink-0 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
-            <span>Full details (name, phone, meeting) can be added later via Edit.</span>
+            <span>
+              Full details (name, phone, meeting) can be added later via Edit.
+            </span>
           </div>
         </form>
 
         {/* Footer */}
         <div className="modal-footer">
-          <button type="button" onClick={onClose} className="btn btn-ghost flex-1">Cancel</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-ghost flex-1"
+          >
+            Cancel
+          </button>
           <button
             onClick={handleSubmit}
-            disabled={saving || generating || !secretCode}
+            disabled={saving || generating}
             className="btn btn-primary flex-1"
           >
             {saving ? (
               <span className="flex items-center gap-2">
-                <span className="spinner" style={{ width: "0.9rem", height: "0.9rem", borderWidth: "2px" }} />
+                <span
+                  className="spinner"
+                  style={{
+                    width: "0.9rem",
+                    height: "0.9rem",
+                    borderWidth: "2px",
+                  }}
+                />
                 Saving…
               </span>
-            ) : "Add Customer →"}
+            ) : (
+              "Add Customer →"
+            )}
           </button>
         </div>
       </div>

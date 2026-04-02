@@ -76,6 +76,7 @@ async function apiFetch<T>(
 
 export interface ApiUser {
   id: number;
+  company_id?: number;
   name: string;
   email: string;
   company_name: string;
@@ -84,6 +85,7 @@ export interface ApiUser {
   city?: string;
   address: string;
   role: "user" | "admin";
+  is_company_owner?: boolean;
   is_active: boolean;
   email_verified: boolean;
   experience_level?: string;
@@ -91,6 +93,7 @@ export interface ApiUser {
   budget_segments?: string[];
   max_ticket_size?: string | number;
   buyer_types?: string[];
+  project_preference?: string[];
   micro_markets?: string;
   sell_cities?: string;
   avg_leads_per_month?: number;
@@ -116,12 +119,19 @@ export interface ProjectMeeting {
   meeting_time: string;
   scheduled_at?: string;
   updated_at?: string;
+  created_by_id?: number;
+  created_by_name?: string;
+  updated_by_id?: number;
+  updated_by_name?: string;
+  assigned_to_user_id?: number;
+  assigned_to_user_name?: string;
 }
 
 // Customer Interface with multiple projects support
 export interface Customer {
   id: number;
   user_id: number;
+  user?: { id?: number; name: string; email?: string; company_name?: string };
   nickname: string;
   secret_code: string;
   name?: string;
@@ -134,7 +144,7 @@ export interface Customer {
   meeting_time?: string;
   project_name?: string;
   notes?: string;
-  status: "active" | "inactive" | "converted";
+  status: "active" | "inactive" | "Booked";
   is_active?: number;
   created_at: string;
   updated_at: string;
@@ -168,18 +178,13 @@ export interface ProfileUpdatePayload {
   budget_segments?: string[];
   max_ticket_size?: number;
   buyer_types?: string[];
+  project_preference?: string[];
   micro_markets?: string;
   sell_cities?: string;
   avg_leads_per_month?: number;
   avg_site_visits_per_month?: number;
   avg_closures_per_month?: number;
   selling_style?: "own_leads" | "developer_leads" | "both";
-  activation_intent?:
-    | "immediately"
-    | "in_7_days"
-    | "in_15_plus_days"
-    | "exploring";
-  commitment_signal?: boolean;
   available_slots?: string[];
   channels_used?: string[];
   onboarding_step?: number;
@@ -190,10 +195,21 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface ForgotPasswordSendCodePayload {
+  email: string;
+}
+
+export interface ForgotPasswordResetPayload {
+  email: string;
+  code: string;
+  password: string;
+  password_confirmation: string;
+}
+
 export interface AuthResponse {
   message: string;
   user: ApiUser;
-  token: string;
+  token?: string;
   email_verified?: boolean;
 }
 
@@ -223,6 +239,18 @@ export const AuthAPI = {
 
   resendVerification: () =>
     apiFetch<{ message: string }>("/auth/email/resend", { method: "POST" }),
+
+  forgotPasswordSendCode: (payload: ForgotPasswordSendCodePayload) =>
+    apiFetch<{ message: string }>("/auth/forgot-password/send-code", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  forgotPasswordReset: (payload: ForgotPasswordResetPayload) =>
+    apiFetch<{ message: string }>("/auth/forgot-password/reset", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -266,6 +294,74 @@ export const AdminAPI = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  COMPANY USER API
+// ══════════════════════════════════════════════════════════════════════════════
+
+export interface CompanyUser {
+  id: number;
+  company_id?: number;
+  company_name?: string;
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CreateCompanyUserPayload {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  password: string;
+  password_confirmation: string;
+  is_active?: boolean;
+}
+
+export interface UpdateCompanyUserPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  is_active?: boolean;
+  password?: string;
+  password_confirmation?: string;
+}
+
+export const CompanyUserAPI = {
+  list: (search?: string, isActive?: boolean) => {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (typeof isActive === "boolean")
+      params.set("is_active", String(isActive));
+    const qs = params.toString() ? `?${params}` : "";
+    return apiFetch<{ data: CompanyUser[]; total: number }>(
+      `/company-users${qs}`,
+    );
+  },
+
+  get: (id: number) => apiFetch<{ data: CompanyUser }>(`/company-users/${id}`),
+
+  create: (payload: CreateCompanyUserPayload) =>
+    apiFetch<{ message: string; data: CompanyUser }>("/company-users", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  update: (id: number, payload: UpdateCompanyUserPayload) =>
+    apiFetch<{ message: string; data: CompanyUser }>(`/company-users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  delete: (id: number) =>
+    apiFetch<{ message: string }>(`/company-users/${id}`, {
+      method: "DELETE",
+    }),
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  CUSTOMER API
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -305,6 +401,7 @@ export const CustomerAPI = {
       meeting_date: string;
       meeting_time: string;
       project_name: string;
+      assigned_to_user_id?: number;
     },
   ) =>
     apiFetch<{ message: string; data: Customer }>(
@@ -333,6 +430,7 @@ export const CustomerAPI = {
     data: {
       meeting_date: string;
       meeting_time: string;
+      assigned_to_user_id?: number;
     },
   ) =>
     apiFetch<{ message: string; data: Customer }>(
@@ -466,6 +564,20 @@ export interface ActivationRequestResponse {
   };
 }
 
+export interface ActivationApprovalProject {
+  id: number;
+  project_name: string;
+  developer_name: string;
+  city: string;
+  unit_structure?: string | null;
+  price_range?: string | null;
+  units_left?: number;
+  approval_count?: number;
+  my_approval_attempts?: number;
+  status: string;
+  created_at: string;
+}
+
 export const ActivationRequestAPI = {
   create: (payload: ActivationRequestPayload, token?: string | null) =>
     apiFetch<ActivationRequestResponse>("/activation-requests", {
@@ -473,4 +585,17 @@ export const ActivationRequestAPI = {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       body: JSON.stringify(payload),
     }),
+
+  getMyProjects: () =>
+    apiFetch<{ data: ActivationApprovalProject[]; total: number }>(
+      "/activation-requests/my-projects",
+    ),
+
+  approve: (id: number) =>
+    apiFetch<{ message: string; data: ActivationApprovalProject }>(
+      `/activation-requests/${id}/approve`,
+      {
+        method: "POST",
+      },
+    ),
 };

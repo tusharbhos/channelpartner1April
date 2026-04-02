@@ -13,6 +13,7 @@ import { AuthAPI, ApiUser, getToken, setToken, removeToken } from "@/lib/api";
 
 interface User {
   id: number;
+  company_id?: number;
   name: string;
   email: string;
   company_name: string;
@@ -21,6 +22,7 @@ interface User {
   city?: string;
   address?: string;
   role: "user" | "admin";
+  is_company_owner?: boolean;
   email_verified: boolean;
   is_active: boolean;
   experience_level?: string;
@@ -28,6 +30,7 @@ interface User {
   budget_segments?: string[];
   max_ticket_size?: string | number;
   buyer_types?: string[];
+  project_preference?: string[];
   micro_markets?: string;
   sell_cities?: string;
   avg_leads_per_month?: number;
@@ -127,7 +130,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await AuthAPI.login({ email, password });
 
-      setToken(response.token);
+      if (!response.token) {
+        return {
+          success: false,
+          error: "Login failed. Token not received.",
+        };
+      }
 
       if (!response.user.email_verified) {
         return {
@@ -145,6 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
+      setToken(response.token);
+
       setUser(response.user as unknown as User);
       return { success: true };
     } catch (error: unknown) {
@@ -160,8 +170,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: RegisterData) => {
     try {
       const response = await AuthAPI.register(data);
-      setToken(response.token);
-      setUser(response.user as unknown as User);
+      if (response.token) {
+        setToken(response.token);
+        setUser(response.user as unknown as User);
+      } else {
+        removeToken();
+        setUser(null);
+      }
       return { success: true };
     } catch (error: unknown) {
       const e = error as ApiError;

@@ -166,6 +166,7 @@ export default function LoginPage() {
           <div className="flex justify-end">
             <button
               type="button"
+              onClick={() => router.push("/forgot-password")}
               className="text-xs font-semibold hover:underline"
               style={{
                 color: "var(--orange-600)",

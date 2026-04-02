@@ -4,12 +4,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
@@ -28,7 +31,20 @@ class AuthController extends Controller
             'password'     => ['required', 'confirmed', Password::min(8)],
         ]);
 
+        $company = Company::firstOrCreate(
+            [
+                'name' => $validated['company_name'],
+                'rera_no' => $validated['rera_no'],
+            ],
+            [
+                'is_active' => true,
+            ]
+        );
+
+        $companyHasUsers = User::where('company_id', $company->id)->exists();
+
         $user = User::create([
+            'company_id'   => $company->id,
             'name'         => $validated['name'],
             'email'        => $validated['email'],
             'password'     => Hash::make($validated['password']),
@@ -38,17 +54,15 @@ class AuthController extends Controller
             'city'         => $validated['city'],
             'address'      => $validated['address'],
             'role'         => 'user',
+            'is_company_owner' => ! $companyHasUsers,
         ]);
 
-        // Fire registered event → sends email verification
+        // Fire registered event → sends email verification for main/company-owner account.
         event(new Registered($user));
-
-        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Registration successful! Please verify your email.',
             'user'    => $this->formatUser($user),
-            'token'   => $token,
         ], 201);
     }
 
@@ -75,6 +89,13 @@ class AuthController extends Controller
             ], 403);
         }
 
+        if ($this->requiresEmailVerification($user) && ! $user->hasVerifiedEmail()) {
+            Auth::logout();
+            return response()->json([
+                'message' => 'Please verify your email before logging in.',
+            ], 403);
+        }
+
         // Revoke old tokens (single device login)
         $user->tokens()->delete();
 
@@ -85,6 +106,102 @@ class AuthController extends Controller
             'user'           => $this->formatUser($user),
             'token'          => $token,
             'email_verified' => $user->hasVerifiedEmail(),
+        ]);
+    }
+
+    // ── FORGOT PASSWORD: SEND CODE ───────────────────────
+    public function sendForgotPasswordCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'exists:users,email'],
+        ]);
+
+        $email = strtolower(trim($validated['email']));
+        $targetUser = User::where('email', $email)->firstOrFail();
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $cpCode = 'CP-' . $code;
+
+        DB::table('password_reset_codes')->updateOrInsert(
+            ['email' => $email],
+            [
+                'company_id' => $targetUser->company_id,
+                'company_name' => $targetUser->company_name,
+                'code_hash' => Hash::make($code),
+                'expires_at' => now()->addMinutes(15),
+                'attempts' => 0,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
+        Mail::raw(
+            "Your ChannelPartner.Network password reset code is {$cpCode}. This code will expire in 15 minutes.",
+            function ($message) use ($email) {
+                $message->to($email)
+                    ->subject('ChannelPartner Password Reset Code');
+            }
+        );
+
+        return response()->json([
+            'message' => 'Password reset code sent to your email.',
+        ]);
+    }
+
+    // ── FORGOT PASSWORD: RESET WITH CODE ─────────────────
+    public function resetPasswordWithCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'exists:users,email'],
+            'code' => ['required', 'string', 'max:20'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ]);
+
+        $email = strtolower(trim($validated['email']));
+        $cleanedCode = preg_replace('/\D/', '', $validated['code'] ?? '');
+
+        if (! $cleanedCode || strlen($cleanedCode) !== 6) {
+            return response()->json([
+                'message' => 'Invalid code format.',
+            ], 422);
+        }
+
+        $reset = DB::table('password_reset_codes')->where('email', $email)->first();
+
+        if (! $reset) {
+            return response()->json([
+                'message' => 'Invalid or expired code.',
+            ], 422);
+        }
+
+        if (now()->gt($reset->expires_at)) {
+            DB::table('password_reset_codes')->where('email', $email)->delete();
+            return response()->json([
+                'message' => 'Code expired. Please request a new code.',
+            ], 422);
+        }
+
+        if (! Hash::check($cleanedCode, $reset->code_hash)) {
+            DB::table('password_reset_codes')
+                ->where('email', $email)
+                ->update([
+                    'attempts' => (int) $reset->attempts + 1,
+                    'updated_at' => now(),
+                ]);
+
+            return response()->json([
+                'message' => 'Invalid code.',
+            ], 422);
+        }
+
+        $user = User::where('email', $email)->firstOrFail();
+        $user->password = Hash::make($validated['password']);
+        $user->save();
+
+        $user->tokens()->delete();
+        DB::table('password_reset_codes')->where('email', $email)->delete();
+
+        return response()->json([
+            'message' => 'Password reset successful. Please login with your new password.',
         ]);
     }
 
@@ -125,6 +242,8 @@ class AuthController extends Controller
             'max_ticket_size' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'buyer_types' => ['sometimes', 'nullable', 'array'],
             'buyer_types.*' => ['string', 'max:30'],
+            'project_preference' => ['sometimes', 'nullable', 'array'],
+            'project_preference.*' => ['string', 'max:60'],
 
             'micro_markets' => ['sometimes', 'nullable', 'string'],
             'sell_cities' => ['sometimes', 'nullable', 'string'],
@@ -132,8 +251,6 @@ class AuthController extends Controller
             'avg_site_visits_per_month' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'avg_closures_per_month' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'selling_style' => ['sometimes', 'nullable', 'in:own_leads,developer_leads,both'],
-            'activation_intent' => ['sometimes', 'nullable', 'in:immediately,in_7_days,in_15_plus_days,exploring'],
-            'commitment_signal' => ['sometimes', 'nullable', 'boolean'],
             'available_slots' => ['sometimes', 'nullable', 'array'],
             'available_slots.*' => ['string', 'max:40'],
             'channels_used' => ['sometimes', 'nullable', 'array'],
@@ -182,12 +299,16 @@ class AuthController extends Controller
     // ── Helper ────────────────────────────────────────────
     private function formatUser(User $user): array
     {
+        $requiresVerification = $this->requiresEmailVerification($user);
+
         return [
             'id'             => $user->id,
             'name'           => $user->name,
             'email'          => $user->email,
             'company_name'   => $user->company_name,
             'rera_no'        => $user->rera_no,
+            'company_id'     => $user->company_id,
+            'is_company_owner' => (bool) $user->is_company_owner,
             'phone'          => $user->phone,
             'city'           => $user->city,
             'address'        => $user->address,
@@ -198,19 +319,33 @@ class AuthController extends Controller
             'budget_segments' => $user->budget_segments,
             'max_ticket_size' => $user->max_ticket_size,
             'buyer_types' => $user->buyer_types,
+            'project_preference' => $user->project_preference,
             'micro_markets' => $user->micro_markets,
             'sell_cities' => $user->sell_cities,
             'avg_leads_per_month' => $user->avg_leads_per_month,
             'avg_site_visits_per_month' => $user->avg_site_visits_per_month,
             'avg_closures_per_month' => $user->avg_closures_per_month,
             'selling_style' => $user->selling_style,
-            'activation_intent' => $user->activation_intent,
-            'commitment_signal' => $user->commitment_signal,
             'available_slots' => $user->available_slots,
             'channels_used' => $user->channels_used,
             'onboarding_step' => $user->onboarding_step,
-            'email_verified' => $user->hasVerifiedEmail(),
+            'email_verified' => $requiresVerification ? $user->hasVerifiedEmail() : true,
             'created_at'     => $user->created_at?->toDateTimeString(),
         ];
+    }
+
+    private function requiresEmailVerification(User $user): bool
+    {
+        // Main registration account (company owner / non-company users) must verify email.
+        // Company users created under an owner are allowed to login without verification.
+        if ($user->is_company_owner) {
+            return true;
+        }
+
+        if (! $user->company_id) {
+            return true;
+        }
+
+        return false;
     }
 }

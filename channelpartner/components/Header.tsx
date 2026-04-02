@@ -55,9 +55,7 @@ export default function Header({ variant = "landing" }: HeaderProps) {
     { href: "/home", label: "Projects", icon: "🏠" },
     { href: "/dashboard", label: "Customers", icon: "👥" },
     { href: "/calendar", label: "Calendar", icon: "📅" },
-    ...(user?.role === "admin"
-      ? [{ href: "/admin", label: "Admin", icon: "⚙️" }]
-      : []),
+    
   ];
 
   const showAuthButtons = variant === "landing";
@@ -238,27 +236,16 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                   color: "var(--navy-900)",
                 }}
               >
-                {user.name.charAt(0).toUpperCase()}
+                {user.company_name.charAt(0).toUpperCase()}
               </div>
               <div
                 className="hidden sm:block text-left"
                 style={{ maxWidth: 110 }}
               >
                 <p className="text-white text-xs font-bold leading-tight truncate">
-                  {user.name}
+                  {user.company_name}
                 </p>
-                {user.role === "admin" && (
-                  <span
-                    className="text-xs font-bold px-1.5 rounded-full"
-                    style={{
-                      background: "var(--gold-400)",
-                      color: "var(--navy-900)",
-                      fontSize: "9px",
-                    }}
-                  >
-                    ADMIN
-                  </span>
-                )}
+                
               </div>
               <svg
                 className={`hidden sm:block w-3.5 h-3.5 transition-transform ${dropOpen ? "rotate-180" : ""}`}
@@ -297,25 +284,34 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                     Signed in as
                   </p>
                   <p
-                    className="font-bold text-sm truncate"
+                    className="font-bold text-sm "
                     style={{ color: "var(--navy-900)" }}
                   >
-                    {user.name}
+                    Company : {user.company_name}
                   </p>
                   <p
-                    className="text-xs truncate"
+                    className="text-xs "
                     style={{ color: "var(--slate-500)" }}
                   >
-                    {user.email}
+                    <b>Name :</b> {user.name} <br /> <b>Email :</b> {user.email}
                   </p>
                 </div>
                 <div className="py-1">
                   {[
-                    {
+                    
+                    ...(user?.is_company_owner || user?.role === "admin"
+                      ? [{
                       icon: "👤",
                       label: "My Profile",
                       action: () => router.push("/profile"),
                     },
+                          {
+                            icon: "🏢",
+                            label: "Company User Management",
+                            action: () => router.push("/company-users"),
+                          },
+                        ]
+                      : []),
                   ].map((item) => (
                     <button
                       key={item.label}
@@ -403,13 +399,13 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                   color: "#fff",
                 }}
               >
-                {user.name.charAt(0).toUpperCase()}
+                {user.company_name.charAt(0).toUpperCase()}
               </div>
               <p
                 className="font-bold text-sm"
                 style={{ color: "var(--navy-900)" }}
               >
-                {user.name}
+                {user.company_name}
               </p>
               <p className="text-xs" style={{ color: "var(--slate-500)" }}>
                 {user.email}

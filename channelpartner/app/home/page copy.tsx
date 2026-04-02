@@ -18,7 +18,6 @@ import SidebarFilter, { SidebarOptions } from "@/components/SidebarFilter";
 import ScheduleMeetingModal from "@/components/ScheduleMeetingModal";
 import AddProjectModal from "@/components/AddProjectModal";
 import { DEFAULT_FILTERS, FilterState } from "@/lib/mockData";
-import { ActivationApprovalProject, ActivationRequestAPI } from "@/lib/api";
 import {
   ApiProject,
   fetchAllProjects,
@@ -42,39 +41,6 @@ function intersects(selected: string[], actual: string[]): boolean {
   if (!selected.length) return true;
   const bag = new Set(actual.map((v) => v.toLowerCase()));
   return selected.some((e) => bag.has(e.toLowerCase()));
-}
-
-function uniqueNormalized(values: Array<string | null | undefined>): string[] {
-  const seen = new Set<string>();
-  const output: string[] = [];
-
-  values.forEach((value) => {
-    const clean = normalize(value);
-    if (!clean) return;
-    const key = clean.toLowerCase();
-    if (seen.has(key)) return;
-    seen.add(key);
-    output.push(clean);
-  });
-
-  return output;
-}
-
-function uniqueOptionPairs(
-  options: Array<{ label: string; value: string }>,
-): Array<{ label: string; value: string }> {
-  const seen = new Set<string>();
-  const output: Array<{ label: string; value: string }> = [];
-
-  options.forEach((item) => {
-    const label = normalize(item.label);
-    const value = normalize(item.value).toLowerCase();
-    if (!label || !value || seen.has(value)) return;
-    seen.add(value);
-    output.push({ label, value });
-  });
-
-  return output;
 }
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -616,171 +582,6 @@ function WelcomeProfilePopup({
   );
 }
 
-function ProjectApprovalHubModal({
-  isOpen,
-  projects,
-  loading,
-  approvingId,
-  onClose,
-  onApprove,
-}: {
-  isOpen: boolean;
-  projects: ActivationApprovalProject[];
-  loading: boolean;
-  approvingId: number | null;
-  onClose: () => void;
-  onApprove: (id: number) => void;
-}) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={onClose}>
-      <div
-        className="glass-card"
-        style={{
-          width: "min(960px, calc(100% - 1.25rem))",
-          maxHeight: "85vh",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          background: "#fff",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          style={{
-            padding: "1rem 1.1rem",
-            borderBottom: "1px solid var(--slate-200)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "0.7rem",
-          }}
-        >
-          <div>
-            <h3
-              style={{
-                margin: 0,
-                fontSize: "1rem",
-                fontFamily: "var(--font-display)",
-                color: "var(--navy-900)",
-                fontWeight: 800,
-              }}
-            >
-              Project Approval - Channel Partner Approval
-            </h3>
-            <p
-              style={{
-                margin: "0.25rem 0 0",
-                fontSize: "0.78rem",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              Onboarding Projects
-            </p>
-          </div>
-          <button className="btn btn-ghost" onClick={onClose}>
-            Close
-          </button>
-        </div>
-
-        <div style={{ padding: "0.9rem", overflowY: "auto" }}>
-          {loading ? (
-            <div className="page-loader" style={{ minHeight: "180px" }}>
-              <div className="spinner spinner-lg" />
-              <p className="page-loader-text">Loading onboarding projects…</p>
-            </div>
-          ) : projects.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-4xl mb-2">📭</p>
-              <p
-                style={{ color: "var(--color-text-muted)", fontSize: "0.9rem" }}
-              >
-                No activation projects found.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {projects.map((p) => (
-                <div
-                  key={p.id}
-                  className="card"
-                  style={{
-                    borderRadius: "var(--radius-xl)",
-                    padding: "0.95rem",
-                    border: "1px solid var(--slate-200)",
-                    boxShadow: "var(--shadow-sm)",
-                  }}
-                >
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "0.95rem",
-                      color: "var(--navy-900)",
-                      fontWeight: 800,
-                      fontFamily: "var(--font-display)",
-                    }}
-                  >
-                    {p.project_name}
-                  </p>
-
-                  <div
-                    style={{
-                      marginTop: "0.55rem",
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "0.4rem",
-                      fontSize: "0.76rem",
-                      color: "var(--color-text-secondary)",
-                    }}
-                  >
-                    <div>Developer: {p.developer_name || "-"}</div>
-                    <div>Location: {p.city || "-"}</div>
-                    <div>Type of Units: {p.unit_structure || "-"}</div>
-                    <div>Price Range: {p.price_range || "-"}</div>
-                    <div>Units Available: {p.units_left ?? 0}</div>
-                    <div>Status: {p.status}</div>
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: "0.7rem",
-                      padding: "0.55rem 0.65rem",
-                      borderRadius: "var(--radius-md)",
-                      background: "var(--slate-50)",
-                      border: "1px solid var(--slate-200)",
-                      fontSize: "0.74rem",
-                      color: "var(--color-text-muted)",
-                    }}
-                  >
-                    Total Approvals: {p.approval_count ?? 0} | Your Approval
-                    Attempts: {p.my_approval_attempts ?? 0}
-                  </div>
-
-                  <button
-                    className="btn btn-gold"
-                    style={{ marginTop: "0.65rem", width: "100%" }}
-                    onClick={() => onApprove(p.id)}
-                    disabled={
-                      approvingId === p.id || (p.my_approval_attempts ?? 0) > 0
-                    }
-                  >
-                    {approvingId === p.id
-                      ? "Submitting Approval..."
-                      : (p.my_approval_attempts ?? 0) > 0
-                        ? "Already Approved"
-                        : "Give Approval"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ══════════════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════════════ */
@@ -789,7 +590,6 @@ export default function HomePage() {
   const router = useRouter();
 
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
-  const [showApprovalHub, setShowApprovalHub] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -798,13 +598,8 @@ export default function HomePage() {
   const [addProjectOpen, setAddProjectOpen] = useState(false);
 
   const [projects, setProjects] = useState<ApiProject[]>([]);
-  const [approvalProjects, setApprovalProjects] = useState<
-    ActivationApprovalProject[]
-  >([]);
   const [metaLoading, setMetaLoading] = useState(true);
   const [projectsLoading, setProjectsLoading] = useState(true);
-  const [approvalLoading, setApprovalLoading] = useState(false);
-  const [approvingId, setApprovingId] = useState<number | null>(null);
 
   /* ── pagination state ── */
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -826,9 +621,6 @@ export default function HomePage() {
   });
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
-  const isOwner = Boolean(user?.is_company_owner);
-  const isRegularCompanyUser = Boolean(user?.company_id) && !isOwner;
-
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace("/login");
   }, [isAuthenticated, isLoading, router]);
@@ -837,6 +629,8 @@ export default function HomePage() {
   useEffect(() => {
     if (!user) return;
     const isAdmin = user.role === "admin";
+    const isOwner = Boolean(user.is_company_owner);
+    const isRegularCompanyUser = Boolean(user.company_id) && !isOwner;
 
     // Popup should never show for company users.
     if (isRegularCompanyUser) {
@@ -908,36 +702,38 @@ export default function HomePage() {
           (data.filters ?? []).map((item) => [item.key, item]),
         );
 
-        const categories = uniqueNormalized(
-          (filtersMap.get("categories")?.options ?? []).map((o) => o.name),
-        );
-        const tags = uniqueNormalized(
-          (filtersMap.get("tags")?.options ?? []).map((o) => o.name),
-        );
-        const amenities = uniqueNormalized(
-          (filtersMap.get("amenities")?.options ?? []).map((o) => o.name),
-        );
-        const developers = uniqueNormalized(
-          (filtersMap.get("developer")?.options ?? []).map((o) => o.name),
-        );
-        const locations = uniqueNormalized(
-          (filtersMap.get("location")?.options ?? []).map((o) => o.name),
-        );
-        const developmentStatus = uniqueOptionPairs(
-          (filtersMap.get("development_status")?.options ?? []).map((o) => ({
+        const categories = (filtersMap.get("categories")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const tags = (filtersMap.get("tags")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const amenities = (filtersMap.get("amenities")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const developers = (filtersMap.get("developer")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const locations = (filtersMap.get("location")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const developmentStatus = (
+          filtersMap.get("development_status")?.options ?? []
+        )
+          .map((o) => ({
             label: normalize(o.name),
             value: normalize(o.value ?? o.name).toLowerCase(),
-          })),
-        );
-        const bestSuited = uniqueOptionPairs(
-          (filtersMap.get("best_suited")?.options ?? []).map((o) => ({
+          }))
+          .filter((o) => o.label && o.value);
+        const bestSuited = (filtersMap.get("best_suited")?.options ?? [])
+          .map((o) => ({
             label: normalize(o.name),
             value: normalize(o.value ?? o.name).toLowerCase(),
-          })),
-        );
-        const unitTypes = uniqueNormalized(
-          (filtersMap.get("unit_type")?.options ?? []).map((o) => o.name),
-        );
+          }))
+          .filter((o) => o.label && o.value);
+        const unitTypes = (filtersMap.get("unit_type")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
         const areaFilter = filtersMap.get("area");
         const priceFilter = filtersMap.get("price");
         const areaRange = {
@@ -990,16 +786,24 @@ export default function HomePage() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    const projectNames = uniqueNormalized(projects.map((p) => p.title));
+    const projectNames = Array.from(
+      new Set(projects.map((p) => normalize(p.title)).filter(Boolean)),
+    );
     setFilterOptions((prev) => ({
       ...prev,
       projects: projectNames,
       developers: prev.developers.length
         ? prev.developers
-        : uniqueNormalized(projects.map((p) => p.developer)),
+        : Array.from(
+            new Set(
+              projects.map((p) => normalize(p.developer)).filter(Boolean),
+            ),
+          ),
       locations: prev.locations.length
         ? prev.locations
-        : uniqueNormalized(projects.map((p) => p.location)),
+        : Array.from(
+            new Set(projects.map((p) => normalize(p.location)).filter(Boolean)),
+          ),
     }));
   }, [projects]);
 
@@ -1012,17 +816,15 @@ export default function HomePage() {
       const location = normalize(project.location);
       const status = normalize(project.development_status).toLowerCase();
       const suited = normalize(project.best_suited).toLowerCase();
-      const categories = uniqueNormalized(
-        (project.categories ?? []).map((item) => item.name),
+      const categories = (project.categories ?? []).map((item) =>
+        normalize(item.name),
       );
-      const tags = uniqueNormalized(
-        (project.tags ?? []).map((item) => item.name),
+      const tags = (project.tags ?? []).map((item) => normalize(item.name));
+      const amenities = (project.amenities ?? []).map((item) =>
+        normalize(item.name),
       );
-      const amenities = uniqueNormalized(
-        (project.amenities ?? []).map((item) => item.name),
-      );
-      const unitTypes = uniqueNormalized(
-        (project.units ?? []).map((unit) => unit.unit_type),
+      const unitTypes = (project.units ?? []).map((unit) =>
+        normalize(unit.unit_type),
       );
 
       const projectMinArea = Math.min(
@@ -1050,21 +852,11 @@ export default function HomePage() {
         ...(project.units ?? []).map((u) => toNumber(u.available_units)),
       );
 
-      const searchHaystack = [
-        title,
-        developer,
-        location,
-        status,
-        suited,
-        ...categories,
-        ...tags,
-        ...amenities,
-        ...unitTypes,
-      ]
-        .map((item) => item.toLowerCase())
-        .join(" |");
-
-      const matchSearch = !query || searchHaystack.includes(query);
+      const matchSearch =
+        !query ||
+        title.toLowerCase().includes(query) ||
+        developer.toLowerCase().includes(query) ||
+        location.toLowerCase().includes(query);
       const matchProject =
         !filters.projectName.length || filters.projectName.includes(title);
       const matchDeveloper = valueInString(filters.developer, developer);
@@ -1186,54 +978,6 @@ export default function HomePage() {
     setTimeout(() => setToast(""), 3500);
   };
 
-  const loadApprovalProjects = useCallback(async () => {
-    try {
-      setApprovalLoading(true);
-      const res = await ActivationRequestAPI.getMyProjects();
-      setApprovalProjects(res.data ?? []);
-    } catch (e: unknown) {
-      const msg =
-        (e as { message?: string }).message ??
-        "Unable to load onboarding projects.";
-      setToast(msg);
-      setTimeout(() => setToast(""), 3000);
-    } finally {
-      setApprovalLoading(false);
-    }
-  }, []);
-
-  const openApprovalHub = async () => {
-    setShowApprovalHub(true);
-    await loadApprovalProjects();
-  };
-
-  const handleGiveApproval = async (id: number) => {
-    try {
-      setApprovingId(id);
-      const res = await ActivationRequestAPI.approve(id);
-      setApprovalProjects((prev) =>
-        prev.map((row) => (row.id === id ? res.data : row)),
-      );
-      setToast("Approval submitted successfully.");
-      setTimeout(() => setToast(""), 2200);
-    } catch (e: unknown) {
-      const msg =
-        (e as { message?: string }).message ?? "Approval submission failed.";
-      setToast(msg);
-      setTimeout(() => setToast(""), 3000);
-    } finally {
-      setApprovingId(null);
-    }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated && !isRegularCompanyUser) {
-      loadApprovalProjects();
-    }
-  }, [isAuthenticated, isRegularCompanyUser, loadApprovalProjects]);
-
-  const approvalLeadCount = approvalProjects.length;
-
   if (isLoading || projectsLoading || metaLoading) return <PageLoader />;
   if (!isAuthenticated) return null;
 
@@ -1276,15 +1020,6 @@ export default function HomePage() {
         }}
       />
 
-      <ProjectApprovalHubModal
-        isOpen={showApprovalHub}
-        projects={approvalProjects}
-        loading={approvalLoading}
-        approvingId={approvingId}
-        onClose={() => setShowApprovalHub(false)}
-        onApprove={handleGiveApproval}
-      />
-
       {/* Toast */}
       {toast && (
         <div
@@ -1314,78 +1049,6 @@ export default function HomePage() {
               ×
             </button>
           </div>
-        </div>
-      )}
-
-      {!isRegularCompanyUser && (
-        <div
-          style={{
-            position: "fixed",
-            right: "1rem",
-            bottom: "1.05rem",
-            zIndex: 9998,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "0.35rem",
-          }}
-        >
-          <span
-            style={{
-              fontSize: "0.66rem",
-              fontWeight: 800,
-              color: "var(--navy-800)",
-              background: "rgba(255,255,255,0.95)",
-              padding: "0.22rem 0.45rem",
-              borderRadius: "999px",
-              border: "1px solid var(--slate-200)",
-            }}
-          >
-            Onboarding Projects
-          </span>
-
-          <button
-            onClick={openApprovalHub}
-            title="Onboarding Projects"
-            style={{
-              position: "relative",
-              width: "3.2rem",
-              height: "3.2rem",
-              borderRadius: "999px",
-              border: "none",
-              cursor: "pointer",
-              background:
-                "linear-gradient(135deg, var(--orange-500) 0%, var(--navy-700) 100%)",
-              boxShadow: "0 8px 24px rgba(30,69,128,0.35)",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "1.1rem",
-            }}
-          >
-            ✅
-            <span
-              style={{
-                position: "absolute",
-                right: "-4px",
-                top: "-4px",
-                minWidth: "1.2rem",
-                height: "1.2rem",
-                borderRadius: "999px",
-                background: "#ef4444",
-                color: "#fff",
-                fontSize: "0.68rem",
-                fontWeight: 800,
-                lineHeight: "1.2rem",
-                textAlign: "center",
-                padding: "0 0.2rem",
-                border: "2px solid #fff",
-              }}
-            >
-              {approvalLeadCount}
-            </span>
-          </button>
         </div>
       )}
 
