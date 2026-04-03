@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Filesystem\FilesystemAdapter;
 
 class AuthController extends Controller
 {
@@ -23,6 +26,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:255'],
             'company_name' => ['required', 'string', 'max:255'],
+            'company_size' => ['required', 'in:individual,1-2,5-10,10-20,20-50,50-100,100+'],
             'rera_no'      => ['required', 'string', 'max:100'],
             'phone'        => ['required', 'string', 'regex:/^\d{10}$/'],
             'city'         => ['required', 'string', 'max:100'],
@@ -49,6 +53,7 @@ class AuthController extends Controller
             'email'        => $validated['email'],
             'password'     => Hash::make($validated['password']),
             'company_name' => $validated['company_name'],
+            'company_size' => $validated['company_size'],
             'rera_no'      => $validated['rera_no'],
             'phone'        => $validated['phone'],
             'city'         => $validated['city'],
@@ -80,7 +85,15 @@ class AuthController extends Controller
             ], 401);
         }
 
+        /** @var User|null $user */
         $user = Auth::user();
+
+        if (! $user instanceof User) {
+            Auth::logout();
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
 
         if (! $user->is_active) {
             Auth::logout();
@@ -208,7 +221,10 @@ class AuthController extends Controller
     // ── LOGOUT ────────────────────────────────────────────
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $this->authenticatedUser($request);
+        /** @var PersonalAccessToken|null $token */
+        $token = $user->currentAccessToken();
+        $token?->delete();
 
         return response()->json(['message' => 'Logged out successfully.']);
     }
@@ -216,20 +232,24 @@ class AuthController extends Controller
     // ── GET PROFILE ───────────────────────────────────────
     public function me(Request $request): JsonResponse
     {
+        $user = $this->authenticatedUser($request);
+
         return response()->json([
-            'user'           => $this->formatUser($request->user()),
-            'email_verified' => $request->user()->hasVerifiedEmail(),
+            'user'           => $this->formatUser($user),
+            'email_verified' => $user->hasVerifiedEmail(),
         ]);
     }
 
     // ── UPDATE PROFILE / ONBOARDING ──────────────────────
     public function updateProfile(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'company_name' => ['sometimes', 'string', 'max:255'],
+            'company_size' => ['sometimes', 'nullable', 'in:individual,1-2,5-10,10-20,20-50,50-100,100+'],
+            'profile_image' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'rera_no' => ['sometimes', 'string', 'max:100'],
             'phone' => ['sometimes', 'string', 'regex:/^\d{10}$/'],
             'city' => ['sometimes', 'string', 'max:100'],
@@ -257,6 +277,17 @@ class AuthController extends Controller
             'channels_used.*' => ['string', 'max:50'],
             'onboarding_step' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:3'],
         ]);
+
+        if ($request->hasFile('profile_image')) {
+            /** @var FilesystemAdapter $publicDisk */
+            $publicDisk = Storage::disk('public');
+
+            if ($user->profile_image) {
+                $publicDisk->delete($user->profile_image);
+            }
+
+            $validated['profile_image'] = $request->file('profile_image')->store('profile-images', 'public');
+        }
 
         $user->update($validated);
 
@@ -287,11 +318,13 @@ class AuthController extends Controller
     // ── RESEND VERIFICATION EMAIL ─────────────────────────
     public function resendVerification(Request $request): JsonResponse
     {
-        if ($request->user()->hasVerifiedEmail()) {
+        $user = $this->authenticatedUser($request);
+
+        if ($user->hasVerifiedEmail()) {
             return response()->json(['message' => 'Email already verified.'], 400);
         }
 
-        $request->user()->sendEmailVerificationNotification();
+        $user->sendEmailVerificationNotification();
 
         return response()->json(['message' => 'Verification email sent.']);
     }
@@ -300,12 +333,17 @@ class AuthController extends Controller
     private function formatUser(User $user): array
     {
         $requiresVerification = $this->requiresEmailVerification($user);
+        /** @var FilesystemAdapter $publicDisk */
+        $publicDisk = Storage::disk('public');
 
         return [
             'id'             => $user->id,
             'name'           => $user->name,
             'email'          => $user->email,
             'company_name'   => $user->company_name,
+            'company_size'   => $user->company_size,
+            'profile_image'  => $user->profile_image,
+            'profile_image_url' => $user->profile_image ? $publicDisk->url($user->profile_image) : null,
             'rera_no'        => $user->rera_no,
             'company_id'     => $user->company_id,
             'is_company_owner' => (bool) $user->is_company_owner,
@@ -347,5 +385,16 @@ class AuthController extends Controller
         }
 
         return false;
+    }
+
+    private function authenticatedUser(Request $request): User
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        return $user;
     }
 }

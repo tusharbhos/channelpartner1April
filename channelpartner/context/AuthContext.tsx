@@ -17,6 +17,9 @@ interface User {
   name: string;
   email: string;
   company_name: string;
+  company_size?: string;
+  profile_image?: string;
+  profile_image_url?: string;
   rera_no?: string;
   phone?: string;
   city?: string;
@@ -70,6 +73,7 @@ interface AuthContextType {
 interface RegisterData {
   name: string;
   company_name: string;
+  company_size: string;
   rera_no: string;
   phone: string;
   city: string;

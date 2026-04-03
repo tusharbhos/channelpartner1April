@@ -333,7 +333,7 @@ export default function CompanyUsersPage() {
 
       {showModal && canManage && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-card bg-white" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">
                 {editRow ? "Edit Company User" : "Create Company User"}

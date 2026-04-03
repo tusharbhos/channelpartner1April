@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('logout',       [AuthController::class, 'logout']);
         Route::get('me',            [AuthController::class, 'me']);
+        Route::post('profile',      [AuthController::class, 'updateProfile']);
         Route::put('profile',       [AuthController::class, 'updateProfile']);
         Route::post('email/resend', [AuthController::class, 'resendVerification'])
             ->middleware('throttle:3,1');

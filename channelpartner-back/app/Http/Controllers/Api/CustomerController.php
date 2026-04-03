@@ -255,13 +255,14 @@ class CustomerController extends Controller
             return;
         }
 
-        // Company owner can monitor all company users' customers and activities.
-        if ($user->is_company_owner && $user->company_id) {
+        // Any company member can access company-level customers for shared workflows
+        // like project scheduling and assignment.
+        if ($user->company_id) {
             $query->whereHas('user', fn($u) => $u->where('company_id', $user->company_id));
             return;
         }
 
-        // Regular company user sees only own dashboard customers.
+        // Non-company users see only their own customers.
         $query->where('user_id', $user->id);
     }
 

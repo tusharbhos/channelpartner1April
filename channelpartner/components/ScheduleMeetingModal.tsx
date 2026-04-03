@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { CustomerAPI, Customer, CompanyUserAPI, CompanyUser } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 interface Props {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export default function ScheduleMeetingModal({
   projectName,
   onScheduled,
 }: Props) {
+  const { user } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [assignees, setAssignees] = useState<CompanyUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,17 +56,38 @@ export default function ScheduleMeetingModal({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const canAssignCompanyUser =
+    user?.role === "admin" || Boolean(user?.is_company_owner);
+
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    Promise.all([CustomerAPI.list(), CompanyUserAPI.list()])
-      .then(([customerRes, assigneeRes]) => {
-        setCustomers(customerRes.data);
-        setAssignees(assigneeRes.data.filter((u) => u.is_active));
+    setError("");
+    setSuccess("");
+
+    const assigneeRequest: Promise<{ data: CompanyUser[]; total: number }> =
+      canAssignCompanyUser
+        ? CompanyUserAPI.list()
+        : Promise.resolve({ data: [], total: 0 });
+
+    Promise.allSettled([CustomerAPI.list(), assigneeRequest])
+      .then(([customerResult, assigneeResult]) => {
+        if (customerResult.status === "fulfilled") {
+          setCustomers(customerResult.value.data);
+        } else {
+          setCustomers([]);
+          setError("Unable to load customers. Please try again.");
+        }
+
+        if (assigneeResult.status === "fulfilled") {
+          setAssignees(assigneeResult.value.data.filter((u) => u.is_active));
+        } else {
+          // Assignee list is optional. Scheduling should still work for creator.
+          setAssignees([]);
+        }
       })
-      .catch(console.error)
       .finally(() => setLoading(false));
-  }, [isOpen]);
+  }, [isOpen, canAssignCompanyUser]);
 
   const reset = () => {
     setSelId(null);
@@ -95,7 +118,9 @@ export default function ScheduleMeetingModal({
         meeting_date: date,
         meeting_time: time,
         project_name: projectName,
-        assigned_to_user_id: assignedTo ?? undefined,
+        assigned_to_user_id: canAssignCompanyUser
+          ? (assignedTo ?? undefined)
+          : undefined,
       });
       setSuccess("✓ Meeting scheduled!");
       setTimeout(() => {
@@ -307,30 +332,32 @@ export default function ScheduleMeetingModal({
                 </select>
               </div>
 
-              <div>
-                <p
-                  className="text-xs mb-1"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
-                  Assign to Company User (optional)
-                </p>
-                <select
-                  value={assignedTo ?? ""}
-                  onChange={(e) =>
-                    setAssignedTo(
-                      e.target.value ? Number(e.target.value) : null,
-                    )
-                  }
-                  className="input-field"
-                >
-                  <option value="">— Keep with creator —</option>
-                  {assignees.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {canAssignCompanyUser && (
+                <div>
+                  <p
+                    className="text-xs mb-1"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
+                    Assign to Company User (optional)
+                  </p>
+                  <select
+                    value={assignedTo ?? ""}
+                    onChange={(e) =>
+                      setAssignedTo(
+                        e.target.value ? Number(e.target.value) : null,
+                      )
+                    }
+                    className="input-field"
+                  >
+                    <option value="">— Keep with creator —</option>
+                    {assignees.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Summary */}
               {date && time && (
@@ -352,7 +379,7 @@ export default function ScheduleMeetingModal({
                     <br />
                     📅 {DATE_OPTIONS.find((d) => d.val === date)?.label}{" "}
                     &nbsp;·&nbsp; 🕐 {fmt12(time)}
-                    {assignedTo ? (
+                    {canAssignCompanyUser && assignedTo ? (
                       <>
                         <br />
                         👥 Assigned:{" "}

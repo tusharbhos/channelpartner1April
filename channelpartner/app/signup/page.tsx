@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 interface FormData {
   name: string;
   companyName: string;
+  companySize: string;
   reraNo: string;
   phone: string;
   city: string;
@@ -22,6 +23,7 @@ interface FormData {
 const INITIAL: FormData = {
   name: "",
   companyName: "",
+  companySize: "",
   reraNo: "",
   phone: "",
   city: "",
@@ -55,6 +57,16 @@ const FieldLabel = ({ children }: { children: React.ReactNode }) => (
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="auth-field-error">{msg}</p> : null;
 
+const companySizeOptions = [
+  { label: "Individual", value: "individual" },
+  { label: "1-2", value: "1-2" },
+  { label: "5-10", value: "5-10" },
+  { label: "10-20", value: "10-20" },
+  { label: "20-50", value: "20-50" },
+  { label: "50-100", value: "50-100" },
+  { label: "100+", value: "100+" },
+];
+
 export default function SignupPage() {
   type FormErrors = Partial<Record<keyof FormData, string>>;
   const router = useRouter();
@@ -73,6 +85,7 @@ export default function SignupPage() {
   const validate = (): boolean => {
     const e: FormErrors = {};
     if (!form.name.trim()) e.name = "Name is required";
+    if (!form.companySize) e.companySize = "Company size is required";
     if (!form.reraNo.trim()) e.reraNo = "RERA No is required";
     if (!form.phone.match(/^\d{10}$/)) e.phone = "Enter a valid 10-digit phone";
     if (!form.city.trim()) e.city = "City is required";
@@ -95,6 +108,7 @@ export default function SignupPage() {
     const result = await register({
       name: form.name,
       company_name: form.companyName,
+      company_size: form.companySize,
       rera_no: form.reraNo,
       phone: form.phone,
       city: form.city,
@@ -265,6 +279,29 @@ export default function SignupPage() {
                 placeholder="Sharma Realty Pvt Ltd"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>
+                Company Size{" "}
+                <span style={{ color: "var(--orange-400)" }}>*</span>
+              </FieldLabel>
+              <select
+                className="auth-form-input"
+                value={form.companySize}
+                onChange={(e) => set("companySize", e.target.value)}
+              >
+                <option value="">Select company size</option>
+                {companySizeOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <FieldError msg={errors.companySize} />
+            </div>
+            <div />
           </div>
 
           {/* Row 2: RERA + Phone */}

@@ -55,7 +55,6 @@ export default function Header({ variant = "landing" }: HeaderProps) {
     { href: "/home", label: "Projects", icon: "🏠" },
     { href: "/dashboard", label: "Customers", icon: "👥" },
     { href: "/calendar", label: "Calendar", icon: "📅" },
-    
   ];
 
   const showAuthButtons = variant === "landing";
@@ -88,7 +87,12 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                 alt="ChannelPartner.Network"
                 fill
                 sizes="(max-width:640px) 130px, 192px"
-                style={{ objectFit: "contain", objectPosition: "left" }}
+                className="bg-white rounded-md"
+                style={{
+                  objectFit: "contain",
+                  objectPosition: "center",
+                  height: "100%",
+                }}
                 priority
                 onError={() => setLogoError(true)}
               />
@@ -234,9 +238,22 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                   height: "1.9rem",
                   background: "var(--gold-400)",
                   color: "var(--navy-900)",
+                  overflow: "hidden",
                 }}
               >
-                {user.company_name.charAt(0).toUpperCase()}
+                {user.profile_image_url ? (
+                  <img
+                    src={user.profile_image_url}
+                    alt={user.name}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  user.company_name.charAt(0).toUpperCase()
+                )}
               </div>
               <div
                 className="hidden sm:block text-left"
@@ -245,7 +262,6 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                 <p className="text-white text-xs font-bold leading-tight truncate">
                   {user.company_name}
                 </p>
-                
               </div>
               <svg
                 className={`hidden sm:block w-3.5 h-3.5 transition-transform ${dropOpen ? "rotate-180" : ""}`}
@@ -289,22 +305,19 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                   >
                     Company : {user.company_name}
                   </p>
-                  <p
-                    className="text-xs "
-                    style={{ color: "var(--slate-500)" }}
-                  >
+                  <p className="text-xs " style={{ color: "var(--slate-500)" }}>
                     <b>Name :</b> {user.name} <br /> <b>Email :</b> {user.email}
                   </p>
                 </div>
                 <div className="py-1">
                   {[
-                    
                     ...(user?.is_company_owner || user?.role === "admin"
-                      ? [{
-                      icon: "👤",
-                      label: "My Profile",
-                      action: () => router.push("/profile"),
-                    },
+                      ? [
+                          {
+                            icon: "👤",
+                            label: "My Profile",
+                            action: () => router.push("/profile"),
+                          },
                           {
                             icon: "🏢",
                             label: "Company User Management",

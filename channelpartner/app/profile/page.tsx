@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -12,6 +12,8 @@ type Step = 1 | 2 | 3;
 type ProfileForm = {
   name: string;
   company_name: string;
+  company_size: string;
+  profile_image_url: string;
   rera_no: string;
   phone: string;
   city: string;
@@ -67,6 +69,21 @@ const monthlyVolumeOptions = [
   { label: "500+", value: "501" },
 ];
 
+const companySizeOptions = [
+  { label: "Individual", value: "individual" },
+  { label: "1-2", value: "1-2" },
+  { label: "5-10", value: "5-10" },
+  { label: "10-20", value: "10-20" },
+  { label: "20-50", value: "20-50" },
+  { label: "50-100", value: "50-100" },
+  { label: "100+", value: "100+" },
+];
+
+function toCompanySizeLabel(value: string): string {
+  const found = companySizeOptions.find((opt) => opt.value === value);
+  return found ? found.label : value || "-";
+}
+
 function toVolumeLabel(value: string): string {
   const found = monthlyVolumeOptions.find((opt) => opt.value === value);
   return found ? found.label : "-";
@@ -93,10 +110,15 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [showSummary, setShowSummary] = useState(false);
+  const initializedRef = useRef(false);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState("");
 
   const [form, setForm] = useState<ProfileForm>(() => ({
     name: user?.name ?? "",
     company_name: user?.company_name ?? "",
+    company_size: user?.company_size ?? "",
+    profile_image_url: user?.profile_image_url ?? "",
     rera_no: user?.rera_no ?? "",
     phone: user?.phone ?? "",
     city: user?.city ?? "",
@@ -125,10 +147,17 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    setShowSummary(true);
+
+    if (!initializedRef.current) {
+      setShowSummary(true);
+      initializedRef.current = true;
+    }
+
     setForm({
       name: user.name ?? "",
       company_name: user.company_name ?? "",
+      company_size: user.company_size ?? "",
+      profile_image_url: user.profile_image_url ?? "",
       rera_no: user.rera_no ?? "",
       phone: user.phone ?? "",
       city: user.city ?? "",
@@ -154,6 +183,8 @@ export default function ProfilePage() {
       available_slots: user.available_slots ?? [],
       channels_used: user.channels_used ?? [],
     });
+    setProfileImageFile(null);
+    setProfileImagePreview(user.profile_image_url ?? "");
     if (user.onboarding_step && [1, 2, 3].includes(user.onboarding_step)) {
       setStep(user.onboarding_step as Step);
     }
@@ -202,43 +233,47 @@ export default function ProfilePage() {
   const saveStep = async (targetStep?: Step) => {
     if (!user) return;
 
-    const payload: ProfileUpdatePayload = {
-      name: form.name,
-      company_name: form.company_name,
-      rera_no: form.rera_no,
-      phone: form.phone,
-      city: form.city,
-      address: form.address,
-      experience_level: form.experience_level || undefined,
-      primary_market: form.primary_market || undefined,
-      budget_segments: form.budget_segments.length
-        ? form.budget_segments
-        : undefined,
-      max_ticket_size: form.max_ticket_size
-        ? Number(form.max_ticket_size)
-        : undefined,
-      buyer_types: form.buyer_types.length ? form.buyer_types : undefined,
-      project_preference: form.project_preference.length
-        ? form.project_preference
-        : undefined,
-      micro_markets: form.micro_markets || undefined,
-      sell_cities: form.sell_cities || undefined,
-      avg_leads_per_month: form.avg_leads_per_month
-        ? Number(form.avg_leads_per_month)
-        : undefined,
-      avg_site_visits_per_month: form.avg_site_visits_per_month
-        ? Number(form.avg_site_visits_per_month)
-        : undefined,
-      avg_closures_per_month: form.avg_closures_per_month
-        ? Number(form.avg_closures_per_month)
-        : undefined,
-      selling_style: form.selling_style || undefined,
-      available_slots: form.available_slots.length
-        ? form.available_slots
-        : undefined,
-      channels_used: form.channels_used.length ? form.channels_used : undefined,
-      onboarding_step: targetStep ?? step,
-    };
+    const payload = new FormData();
+    payload.append("name", form.name);
+    payload.append("company_name", form.company_name);
+    if (form.company_size) payload.append("company_size", form.company_size);
+    payload.append("rera_no", form.rera_no);
+    payload.append("phone", form.phone);
+    payload.append("city", form.city);
+    payload.append("address", form.address);
+    if (form.experience_level)
+      payload.append("experience_level", form.experience_level);
+    if (form.primary_market)
+      payload.append("primary_market", form.primary_market);
+    form.budget_segments.forEach((value) =>
+      payload.append("budget_segments[]", value),
+    );
+    if (form.max_ticket_size)
+      payload.append("max_ticket_size", String(Number(form.max_ticket_size)));
+    form.buyer_types.forEach((value) => payload.append("buyer_types[]", value));
+    form.project_preference.forEach((value) =>
+      payload.append("project_preference[]", value),
+    );
+    if (form.micro_markets) payload.append("micro_markets", form.micro_markets);
+    if (form.sell_cities) payload.append("sell_cities", form.sell_cities);
+    if (form.avg_leads_per_month)
+      payload.append("avg_leads_per_month", form.avg_leads_per_month);
+    if (form.avg_site_visits_per_month)
+      payload.append(
+        "avg_site_visits_per_month",
+        form.avg_site_visits_per_month,
+      );
+    if (form.avg_closures_per_month)
+      payload.append("avg_closures_per_month", form.avg_closures_per_month);
+    if (form.selling_style) payload.append("selling_style", form.selling_style);
+    form.available_slots.forEach((value) =>
+      payload.append("available_slots[]", value),
+    );
+    form.channels_used.forEach((value) =>
+      payload.append("channels_used[]", value),
+    );
+    payload.append("onboarding_step", String(targetStep ?? step));
+    if (profileImageFile) payload.append("profile_image", profileImageFile);
 
     setSaving(true);
     try {
@@ -246,8 +281,10 @@ export default function ProfilePage() {
       await refreshUser();
       setMessage("Saved successfully.");
       if (targetStep) {
+        setShowSummary(false);
         setStep(targetStep);
       } else {
+        setStep(3);
         setShowSummary(true);
       }
     } catch {
@@ -298,6 +335,30 @@ export default function ProfilePage() {
                   <div>
                     <span className="auth-text-muted">Company Name:</span>{" "}
                     {form.company_name || "-"}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Company Size:</span>{" "}
+                    {toCompanySizeLabel(form.company_size)}
+                  </div>
+                  <div>
+                    <span className="auth-text-muted">Profile Image:</span>{" "}
+                    {profileImagePreview ? (
+                      <img
+                        src={profileImagePreview}
+                        alt="Profile"
+                        style={{
+                          width: 56,
+                          height: 56,
+                          objectFit: "cover",
+                          borderRadius: 999,
+                          display: "inline-block",
+                          verticalAlign: "middle",
+                          border: "2px solid var(--navy-100)",
+                        }}
+                      />
+                    ) : (
+                      "-"
+                    )}
                   </div>
                   <div>
                     <span className="auth-text-muted">RERA No:</span>{" "}
@@ -405,6 +466,74 @@ export default function ProfilePage() {
 
             {!showSummary && step === 1 && (
               <div className="space-y-4">
+                <div
+                  className="flex items-center gap-4 p-3 rounded-xl"
+                  style={{
+                    background: "rgba(255,255,255,0.55)",
+                    border: "1px solid rgba(255,255,255,0.45)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 999,
+                      overflow: "hidden",
+                      background: "var(--navy-50)",
+                      border: "2px solid var(--navy-100)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {profileImagePreview ? (
+                      <img
+                        src={profileImagePreview}
+                        alt="Profile preview"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: "1.4rem",
+                          fontWeight: 800,
+                          color: "var(--navy-700)",
+                        }}
+                      >
+                        {form.name?.trim()?.charAt(0)?.toUpperCase() || "U"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <label className="auth-form-label">Profile Image</label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      className="auth-form-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        setProfileImageFile(file);
+                        if (file) {
+                          setProfileImagePreview(URL.createObjectURL(file));
+                        } else {
+                          setProfileImagePreview(form.profile_image_url || "");
+                        }
+                      }}
+                    />
+                    <p
+                      className="text-xs mt-1"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      Upload JPG, PNG or WEBP up to 2MB.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="auth-form-label">Name</label>
@@ -445,6 +574,24 @@ export default function ProfilePage() {
                       onChange={(e) => setValue("company_name", e.target.value)}
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="auth-form-label">Company Size</label>
+                    <select
+                      className="auth-form-input"
+                      value={form.company_size}
+                      onChange={(e) => setValue("company_size", e.target.value)}
+                    >
+                      <option value="">Select</option>
+                      {companySizeOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -624,6 +771,13 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex gap-3">
+                  <button
+                    className="btn btn-ghost"
+                    disabled={saving}
+                    onClick={() => setStep(1)}
+                  >
+                    Back
+                  </button>
                   <button
                     className="btn btn-gold"
                     disabled={saving}

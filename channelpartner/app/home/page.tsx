@@ -83,6 +83,31 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   "ready to move": { bg: "rgba(22,163,74,0.12)", color: "#15803d" },
   default: { bg: "rgba(30,69,128,0.1)", color: "#1e4580" },
 };
+
+const PROJECT_DEMO_VIDEOS = [
+  // Existing videos
+  {
+    title: "VTP Verve",
+    subtitle: "VTP Realty",
+    url: "https://ik.imagekit.io/ConectR/download%20(1).mp4",
+  },
+  {
+    title: "ROSE",
+    subtitle: "Demo Video",
+    url: "https://ik.imagekit.io/ConectR/download%20(2).mp4",
+  },
+  {
+    title: "B-HILLSIDE",
+    subtitle: "Demo Video",
+    url: "https://ik.imagekit.io/ConectR/download%20(3).mp4",
+  },
+  {
+    title: "GAGAN",
+    subtitle: "Demo Video",
+    url: "https://ik.imagekit.io/ConectR/Gagan%20Video%20256.mp4",
+  },
+] as const;
+
 function statusStyle(label: string) {
   const key = label.toLowerCase();
   return STATUS_COLORS[key] ?? STATUS_COLORS["default"];
@@ -276,12 +301,40 @@ function SkeletonCard() {
   );
 }
 
+function AutoPlayVideo({ src }: { src: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    v.play().catch(() => {});
+  }, [src]);
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      loop
+      muted
+      playsInline
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
 function ProjectCardUI({
   project,
   onSchedule,
+  demoVideo,
 }: {
   project: ApiProject;
   onSchedule: (name: string) => void;
+  demoVideo: (typeof PROJECT_DEMO_VIDEOS)[number];
 }) {
   const title = normalize(project.title) || "Untitled Project";
   const developer = normalize(project.developer) || "Developer not available";
@@ -310,14 +363,40 @@ function ProjectCardUI({
 
   return (
     <article
-      className="card project-card-glow flex flex-col"
+      className="card glass-card project-card-glow flex flex-col"
       style={{
         borderRadius: "var(--radius-xl)",
         overflow: "hidden",
-        background: "#fff",
+        background: "rgba(255,255,255,0.2)",
+        border: "1px solid rgba(255,255,255,0.45)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(10px)",
       }}
     >
-      {image ? (
+      {demoVideo?.url ? (
+        <div
+          style={{
+            height: "clamp(120px,22vw,152px)",
+            overflow: "hidden",
+            background: "#020617",
+          }}
+        >
+          <video
+            src={demoVideo.url}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        </div>
+      ) : image ? (
         <div
           style={{
             height: "clamp(120px,22vw,152px)",
@@ -485,23 +564,27 @@ function ProjectCardUI({
           ))}
         </div>
 
-        <div className="flex items-center justify-between gap-2 mt-auto pt-1">
+        <div className="flex items-center w-full mt-auto pt-1">
           <span
             className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
             style={{ background: sc.bg, color: sc.color }}
           >
             {status}
           </span>
+          </div>
+        <div className="flex items-center w-full mt-auto pt-1">
+
           <button
             onClick={() => onSchedule(title)}
-            className="btn btn-gold"
+            className="btn btn-gold w-full"
             style={{
-              fontSize: "0.75rem",
-              padding: "0.4rem 0.9rem",
+              fontSize: "0.7rem",
+              padding: "0.34rem 0.72rem",
               flexShrink: 0,
             }}
+            title="Schedule Pre-Site visit Matchmaking Session"
           >
-            Schedule
+            Schedule Pre-Site visit Matchmaking Session
           </button>
         </div>
       </div>
@@ -753,8 +836,7 @@ function ProjectApprovalHubModal({
                       color: "var(--color-text-muted)",
                     }}
                   >
-                    Total Approvals: {p.approval_count ?? 0} | Your Approval
-                    Attempts: {p.my_approval_attempts ?? 0}
+                    Total Approvals: {p.approval_count ?? 0}
                   </div>
 
                   <button
@@ -790,6 +872,7 @@ export default function HomePage() {
 
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [showApprovalHub, setShowApprovalHub] = useState(false);
+  const [showApprovalPrompt, setShowApprovalPrompt] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -837,6 +920,8 @@ export default function HomePage() {
   useEffect(() => {
     if (!user) return;
     const isAdmin = user.role === "admin";
+    const isOwner = Boolean(user.is_company_owner);
+    const isRegularCompanyUser = Boolean(user.company_id) && !isOwner;
 
     // Popup should never show for company users.
     if (isRegularCompanyUser) {
@@ -908,36 +993,38 @@ export default function HomePage() {
           (data.filters ?? []).map((item) => [item.key, item]),
         );
 
-        const categories = uniqueNormalized(
-          (filtersMap.get("categories")?.options ?? []).map((o) => o.name),
-        );
-        const tags = uniqueNormalized(
-          (filtersMap.get("tags")?.options ?? []).map((o) => o.name),
-        );
-        const amenities = uniqueNormalized(
-          (filtersMap.get("amenities")?.options ?? []).map((o) => o.name),
-        );
-        const developers = uniqueNormalized(
-          (filtersMap.get("developer")?.options ?? []).map((o) => o.name),
-        );
-        const locations = uniqueNormalized(
-          (filtersMap.get("location")?.options ?? []).map((o) => o.name),
-        );
-        const developmentStatus = uniqueOptionPairs(
-          (filtersMap.get("development_status")?.options ?? []).map((o) => ({
+        const categories = (filtersMap.get("categories")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const tags = (filtersMap.get("tags")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const amenities = (filtersMap.get("amenities")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const developers = (filtersMap.get("developer")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const locations = (filtersMap.get("location")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
+        const developmentStatus = (
+          filtersMap.get("development_status")?.options ?? []
+        )
+          .map((o) => ({
             label: normalize(o.name),
             value: normalize(o.value ?? o.name).toLowerCase(),
-          })),
-        );
-        const bestSuited = uniqueOptionPairs(
-          (filtersMap.get("best_suited")?.options ?? []).map((o) => ({
+          }))
+          .filter((o) => o.label && o.value);
+        const bestSuited = (filtersMap.get("best_suited")?.options ?? [])
+          .map((o) => ({
             label: normalize(o.name),
             value: normalize(o.value ?? o.name).toLowerCase(),
-          })),
-        );
-        const unitTypes = uniqueNormalized(
-          (filtersMap.get("unit_type")?.options ?? []).map((o) => o.name),
-        );
+          }))
+          .filter((o) => o.label && o.value);
+        const unitTypes = (filtersMap.get("unit_type")?.options ?? [])
+          .map((o) => normalize(o.name))
+          .filter(Boolean);
         const areaFilter = filtersMap.get("area");
         const priceFilter = filtersMap.get("price");
         const areaRange = {
@@ -990,16 +1077,24 @@ export default function HomePage() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    const projectNames = uniqueNormalized(projects.map((p) => p.title));
+    const projectNames = Array.from(
+      new Set(projects.map((p) => normalize(p.title)).filter(Boolean)),
+    );
     setFilterOptions((prev) => ({
       ...prev,
       projects: projectNames,
       developers: prev.developers.length
         ? prev.developers
-        : uniqueNormalized(projects.map((p) => p.developer)),
+        : Array.from(
+            new Set(
+              projects.map((p) => normalize(p.developer)).filter(Boolean),
+            ),
+          ),
       locations: prev.locations.length
         ? prev.locations
-        : uniqueNormalized(projects.map((p) => p.location)),
+        : Array.from(
+            new Set(projects.map((p) => normalize(p.location)).filter(Boolean)),
+          ),
     }));
   }, [projects]);
 
@@ -1012,17 +1107,15 @@ export default function HomePage() {
       const location = normalize(project.location);
       const status = normalize(project.development_status).toLowerCase();
       const suited = normalize(project.best_suited).toLowerCase();
-      const categories = uniqueNormalized(
-        (project.categories ?? []).map((item) => item.name),
+      const categories = (project.categories ?? []).map((item) =>
+        normalize(item.name),
       );
-      const tags = uniqueNormalized(
-        (project.tags ?? []).map((item) => item.name),
+      const tags = (project.tags ?? []).map((item) => normalize(item.name));
+      const amenities = (project.amenities ?? []).map((item) =>
+        normalize(item.name),
       );
-      const amenities = uniqueNormalized(
-        (project.amenities ?? []).map((item) => item.name),
-      );
-      const unitTypes = uniqueNormalized(
-        (project.units ?? []).map((unit) => unit.unit_type),
+      const unitTypes = (project.units ?? []).map((unit) =>
+        normalize(unit.unit_type),
       );
 
       const projectMinArea = Math.min(
@@ -1050,21 +1143,11 @@ export default function HomePage() {
         ...(project.units ?? []).map((u) => toNumber(u.available_units)),
       );
 
-      const searchHaystack = [
-        title,
-        developer,
-        location,
-        status,
-        suited,
-        ...categories,
-        ...tags,
-        ...amenities,
-        ...unitTypes,
-      ]
-        .map((item) => item.toLowerCase())
-        .join(" |");
-
-      const matchSearch = !query || searchHaystack.includes(query);
+      const matchSearch =
+        !query ||
+        title.toLowerCase().includes(query) ||
+        developer.toLowerCase().includes(query) ||
+        location.toLowerCase().includes(query);
       const matchProject =
         !filters.projectName.length || filters.projectName.includes(title);
       const matchDeveloper = valueInString(filters.developer, developer);
@@ -1210,10 +1293,8 @@ export default function HomePage() {
   const handleGiveApproval = async (id: number) => {
     try {
       setApprovingId(id);
-      const res = await ActivationRequestAPI.approve(id);
-      setApprovalProjects((prev) =>
-        prev.map((row) => (row.id === id ? res.data : row)),
-      );
+      await ActivationRequestAPI.approve(id);
+      setApprovalProjects((prev) => prev.filter((row) => row.id !== id));
       setToast("Approval submitted successfully.");
       setTimeout(() => setToast(""), 2200);
     } catch (e: unknown) {
@@ -1232,7 +1313,27 @@ export default function HomePage() {
     }
   }, [isAuthenticated, isRegularCompanyUser, loadApprovalProjects]);
 
-  const approvalLeadCount = approvalProjects.length;
+  const pendingApprovalProjects = useMemo(
+    () => approvalProjects.filter((p) => (p.my_approval_attempts ?? 0) === 0),
+    [approvalProjects],
+  );
+  const approvalLeadCount = pendingApprovalProjects.length;
+
+  useEffect(() => {
+    if (approvalLeadCount === 0) {
+      setShowApprovalPrompt(false);
+      return;
+    }
+    setShowApprovalPrompt(true);
+  }, [approvalLeadCount]);
+
+  useEffect(() => {
+    if (showApprovalPrompt || approvalLeadCount === 0) return;
+    const timer = window.setTimeout(() => {
+      setShowApprovalPrompt(true);
+    }, 8000);
+    return () => window.clearTimeout(timer);
+  }, [showApprovalPrompt, approvalLeadCount]);
 
   if (isLoading || projectsLoading || metaLoading) return <PageLoader />;
   if (!isAuthenticated) return null;
@@ -1278,7 +1379,7 @@ export default function HomePage() {
 
       <ProjectApprovalHubModal
         isOpen={showApprovalHub}
-        projects={approvalProjects}
+        projects={pendingApprovalProjects}
         loading={approvalLoading}
         approvingId={approvingId}
         onClose={() => setShowApprovalHub(false)}
@@ -1317,75 +1418,129 @@ export default function HomePage() {
         </div>
       )}
 
-      {!isRegularCompanyUser && (
+      {!isRegularCompanyUser && approvalLeadCount > 0 && showApprovalPrompt && (
         <div
           style={{
             position: "fixed",
-            right: "1rem",
-            bottom: "1.05rem",
+            right: "clamp(0.55rem, 2.5vw, 1rem)",
+            bottom: "clamp(0.6rem, 2.5vw, 1.05rem)",
             zIndex: 9998,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "0.35rem",
+            width: "clamp(210px, 64vw, 236px)",
+            maxWidth: "calc(100vw - 1rem)",
           }}
         >
-          <span
+          <div
             style={{
-              fontSize: "0.66rem",
-              fontWeight: 800,
-              color: "var(--navy-800)",
-              background: "rgba(255,255,255,0.95)",
-              padding: "0.22rem 0.45rem",
-              borderRadius: "999px",
+              background: "#fff",
               border: "1px solid var(--slate-200)",
+              borderRadius: "14px",
+              boxShadow: "0 12px 30px rgba(15,23,42,0.14)",
+              padding:
+                "clamp(0.62rem, 2.2vw, 0.78rem) clamp(0.68rem, 2.4vw, 0.85rem)",
             }}
           >
-            Onboarding Projects
-          </span>
-
-          <button
-            onClick={openApprovalHub}
-            title="Onboarding Projects"
-            style={{
-              position: "relative",
-              width: "3.2rem",
-              height: "3.2rem",
-              borderRadius: "999px",
-              border: "none",
-              cursor: "pointer",
-              background:
-                "linear-gradient(135deg, var(--orange-500) 0%, var(--navy-700) 100%)",
-              boxShadow: "0 8px 24px rgba(30,69,128,0.35)",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "1.1rem",
-            }}
-          >
-            ✅
-            <span
+            <div
               style={{
-                position: "absolute",
-                right: "-4px",
-                top: "-4px",
-                minWidth: "1.2rem",
-                height: "1.2rem",
-                borderRadius: "999px",
-                background: "#ef4444",
-                color: "#fff",
-                fontSize: "0.68rem",
-                fontWeight: 800,
-                lineHeight: "1.2rem",
-                textAlign: "center",
-                padding: "0 0.2rem",
-                border: "2px solid #fff",
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: "0.55rem",
               }}
             >
-              {approvalLeadCount}
-            </span>
-          </button>
+              <button
+                onClick={openApprovalHub}
+                title="Open pending approval projects"
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  textAlign: "left",
+                  padding: 0,
+                  cursor: "pointer",
+                  flex: 1,
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "clamp(0.72rem, 2.1vw, 0.8rem)",
+                    fontWeight: 800,
+                    color: "var(--navy-900)",
+                    lineHeight: 1.35,
+                  }}
+                >
+                  Projects Pending Channel Partner Approval
+                </p>
+                <p
+                  style={{
+                    margin: "0.3rem 0 0",
+                    fontSize: "clamp(0.66rem, 1.9vw, 0.72rem)",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  Click to review {approvalLeadCount} pending project
+                  {approvalLeadCount !== 1 ? "s" : ""}
+                </p>
+              </button>
+
+              <button
+                onClick={() => setShowApprovalPrompt(false)}
+                title="Close"
+                aria-label="Close pending approval popup"
+                style={{
+                  width: "1.45rem",
+                  height: "1.45rem",
+                  borderRadius: "999px",
+                  border: "1px solid var(--slate-200)",
+                  background: "#fff",
+                  color: "var(--color-text-muted)",
+                  lineHeight: 1,
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginTop: "0.6rem",
+                gap: "0.55rem",
+              }}
+            >
+              <span
+                style={{
+                  minWidth: "1.35rem",
+                  height: "1.35rem",
+                  borderRadius: "999px",
+                  background: "#ef4444",
+                  color: "#fff",
+                  fontSize: "0.7rem",
+                  fontWeight: 800,
+                  lineHeight: "1.35rem",
+                  textAlign: "center",
+                  padding: "0 0.25rem",
+                }}
+              >
+                {approvalLeadCount}
+              </span>
+
+              <button
+                onClick={openApprovalHub}
+                className="btn btn-gold"
+                style={{
+                  fontSize: "0.72rem",
+                  padding: "0.4rem 0.7rem",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Give Approval
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1487,10 +1642,13 @@ export default function HomePage() {
             <>
               {/* ── Visible cards ── */}
               <div className="grid-auto-fill-280 stagger">
-                {visibleProjects.map((project) => (
+                {visibleProjects.map((project, index) => (
                   <ProjectCardUI
                     key={project.id}
                     project={project}
+                    demoVideo={
+                      PROJECT_DEMO_VIDEOS[index % PROJECT_DEMO_VIDEOS.length]
+                    }
                     onSchedule={handleSchedule}
                   />
                 ))}

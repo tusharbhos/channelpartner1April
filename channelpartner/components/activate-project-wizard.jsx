@@ -537,7 +537,7 @@ export default function ActivateProjectWizard() {
       submitted_at: new Date().toISOString(),
     };
     try {
-      const API_URL = "http://localhost:8000/api";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL;
       const token = typeof window !== "undefined" ? localStorage.getItem("cp_token") : null;
       // Try to submit to backend — if fails, still show success (data saved locally)
       try {

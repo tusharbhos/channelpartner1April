@@ -28,8 +28,10 @@ export default function VerifyEmailPage() {
 
       try {
         // Call your Laravel API directly
+        const apiBase =
+          process.env.NEXT_PUBLIC_API_URL;
         const response = await fetch(
-          `http://localhost:8000/api/email/verify/${id}/${hash}?expires=${expires}&signature=${signature}`,
+          `${apiBase}/email/verify/${id}/${hash}?expires=${expires}&signature=${signature}`,
           {
             method: "GET",
             headers: {

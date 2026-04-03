@@ -32,6 +32,8 @@ async function apiFetch<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = getToken();
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
 
   const url = `${BASE_URL}${endpoint}`;
   console.log("API Request:", url, options.method || "GET");
@@ -39,8 +41,8 @@ async function apiFetch<T>(
   const res = await fetch(url, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
       Accept: "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers ?? {}),
     },
@@ -80,6 +82,9 @@ export interface ApiUser {
   name: string;
   email: string;
   company_name: string;
+  company_size?: string;
+  profile_image?: string;
+  profile_image_url?: string;
   rera_no: string;
   phone: string;
   city?: string;
@@ -118,7 +123,6 @@ export interface ProjectMeeting {
   meeting_date: string;
   meeting_time: string;
   scheduled_at?: string;
-  updated_at?: string;
   created_by_id?: number;
   created_by_name?: string;
   updated_by_id?: number;
@@ -157,6 +161,7 @@ export interface Customer {
 export interface RegisterPayload {
   name: string;
   company_name: string;
+  company_size: string;
   rera_no: string;
   phone: string;
   city: string;
@@ -169,6 +174,8 @@ export interface RegisterPayload {
 export interface ProfileUpdatePayload {
   name?: string;
   company_name?: string;
+  company_size?: string;
+  profile_image?: File;
   rera_no?: string;
   phone?: string;
   city?: string;
@@ -231,11 +238,19 @@ export const AuthAPI = {
 
   me: () => apiFetch<{ user: ApiUser; email_verified: boolean }>("/auth/me"),
 
-  updateProfile: (payload: ProfileUpdatePayload) =>
-    apiFetch<{ message: string; user: ApiUser }>("/auth/profile", {
+  updateProfile: (payload: ProfileUpdatePayload | FormData) => {
+    if (typeof FormData !== "undefined" && payload instanceof FormData) {
+      return apiFetch<{ message: string; user: ApiUser }>("/auth/profile", {
+        method: "POST",
+        body: payload,
+      });
+    }
+
+    return apiFetch<{ message: string; user: ApiUser }>("/auth/profile", {
       method: "PUT",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
   resendVerification: () =>
     apiFetch<{ message: string }>("/auth/email/resend", { method: "POST" }),
