@@ -24,11 +24,13 @@ class Customer extends Model
         'project_name',
         'notes',
         'status',
+        'is_active',
     ];
 
     protected $casts = [
         'meeting_date' => 'date:Y-m-d',
         'projects' => 'array',  // Automatically cast JSON to array
+        'is_active' => 'integer',
     ];
 
     // ── Relationships ─────────────────────────────────────
@@ -55,7 +57,7 @@ class Customer extends Model
     public function addProjectMeeting(array $meetingData): void
     {
         $projects = $this->projects ?? [];
-        
+
         // Check if project already exists
         $existingIndex = null;
         foreach ($projects as $index => $project) {
@@ -64,7 +66,7 @@ class Customer extends Model
                 break;
             }
         }
-        
+
         if ($existingIndex !== null) {
             // Update existing project meeting
             $projects[$existingIndex] = array_merge($projects[$existingIndex], $meetingData);
@@ -72,7 +74,7 @@ class Customer extends Model
             // Add new project meeting
             $projects[] = $meetingData;
         }
-        
+
         $this->projects = $projects;
         $this->save();
     }
@@ -81,7 +83,7 @@ class Customer extends Model
     public function removeProjectMeeting(string $projectName): void
     {
         $projects = $this->projects ?? [];
-        $this->projects = array_filter($projects, function($project) use ($projectName) {
+        $this->projects = array_filter($projects, function ($project) use ($projectName) {
             return $project['project_name'] !== $projectName;
         });
         $this->save();
@@ -106,8 +108,8 @@ class Customer extends Model
     {
         $projects = $this->projects ?? [];
         $today = now()->toDateString();
-        
-        return array_filter($projects, function($project) use ($today) {
+
+        return array_filter($projects, function ($project) use ($today) {
             return isset($project['meeting_date']) && $project['meeting_date'] >= $today;
         });
     }
@@ -117,8 +119,8 @@ class Customer extends Model
     {
         $projects = $this->projects ?? [];
         $today = now()->toDateString();
-        
-        return array_filter($projects, function($project) use ($today) {
+
+        return array_filter($projects, function ($project) use ($today) {
             return isset($project['meeting_date']) && $project['meeting_date'] < $today;
         });
     }

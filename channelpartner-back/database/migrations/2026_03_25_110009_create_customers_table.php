@@ -14,8 +14,8 @@ return new class extends Migration
 
             // Owner
             $table->foreignId('user_id')
-                  ->constrained()
-                  ->cascadeOnDelete();
+                ->constrained()
+                ->cascadeOnDelete();
 
             // Identification
             $table->string('nickname', 100);
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('phone', 15)->nullable();
             $table->text('address')->nullable();
-            
+
             // Multiple Projects - Store as JSON
             $table->json('projects')->nullable();  // Stores array of projects with meeting details
 
@@ -36,8 +36,8 @@ return new class extends Migration
 
             // Extra
             $table->text('notes')->nullable();
-            $table->enum('status', ['active', 'inactive', 'converted'])
-                  ->default('active');
+            $table->enum('status', ['active', 'inactive', 'Booked'])
+                ->default('active');
 
             $table->timestamps();
 

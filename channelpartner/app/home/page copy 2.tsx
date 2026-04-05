@@ -18,7 +18,6 @@ import SidebarFilter, { SidebarOptions } from "@/components/SidebarFilter";
 import ScheduleMeetingModal from "@/components/ScheduleMeetingModal";
 import AddProjectModal from "@/components/AddProjectModal";
 import { DEFAULT_FILTERS, FilterState } from "@/lib/mockData";
-import { ActivationApprovalProject, ActivationRequestAPI } from "@/lib/api";
 import {
   ApiProject,
   fetchAllProjects,
@@ -44,39 +43,6 @@ function intersects(selected: string[], actual: string[]): boolean {
   return selected.some((e) => bag.has(e.toLowerCase()));
 }
 
-function uniqueNormalized(values: Array<string | null | undefined>): string[] {
-  const seen = new Set<string>();
-  const output: string[] = [];
-
-  values.forEach((value) => {
-    const clean = normalize(value);
-    if (!clean) return;
-    const key = clean.toLowerCase();
-    if (seen.has(key)) return;
-    seen.add(key);
-    output.push(clean);
-  });
-
-  return output;
-}
-
-function uniqueOptionPairs(
-  options: Array<{ label: string; value: string }>,
-): Array<{ label: string; value: string }> {
-  const seen = new Set<string>();
-  const output: Array<{ label: string; value: string }> = [];
-
-  options.forEach((item) => {
-    const label = normalize(item.label);
-    const value = normalize(item.value).toLowerCase();
-    if (!label || !value || seen.has(value)) return;
-    seen.add(value);
-    output.push({ label, value });
-  });
-
-  return output;
-}
-
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   "under construction": { bg: "rgba(249,115,22,0.12)", color: "#b47a00" },
   ready: { bg: "rgba(22,163,74,0.12)", color: "#15803d" },
@@ -85,7 +51,6 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 };
 
 const PROJECT_DEMO_VIDEOS = [
-  // Existing videos
   {
     title: "VTP Verve",
     subtitle: "VTP Realty",
@@ -363,14 +328,11 @@ function ProjectCardUI({
 
   return (
     <article
-      className="card glass-card project-card-glow flex flex-col"
+      className="card project-card-glow flex flex-col"
       style={{
         borderRadius: "var(--radius-xl)",
         overflow: "hidden",
-        background: "rgba(255,255,255,0.2)",
-        border: "1px solid rgba(255,255,255,0.45)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(10px)",
+        background: "#fff",
       }}
     >
       {demoVideo?.url ? (
@@ -503,6 +465,58 @@ function ProjectCardUI({
           {toCardPrice(project)}
         </p>
 
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "0.6rem",
+            padding: "0.55rem 0.7rem",
+            borderRadius: "var(--radius-md)",
+            background: "rgba(30,69,128,0.05)",
+            border: "1px solid rgba(30,69,128,0.12)",
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <p
+              style={{
+                fontSize: "0.64rem",
+                color: "var(--color-text-hint)",
+                fontWeight: 700,
+                margin: 0,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+              }}
+            >
+              Demo Link
+            </p>
+            <p
+              className="truncate"
+              style={{
+                fontSize: "0.78rem",
+                color: "var(--navy-900)",
+                fontWeight: 700,
+                margin: 0,
+              }}
+            >
+              {demoVideo.title} - {demoVideo.subtitle}
+            </p>
+          </div>
+          <a
+            href={demoVideo.url}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-ghost"
+            style={{
+              padding: "0.4rem 0.72rem",
+              fontSize: "0.72rem",
+              whiteSpace: "nowrap",
+            }}
+          >
+            View Demo
+          </a>
+        </div>
+
         <div className="grid grid-cols-2 gap-1.5 flex-1">
           {[
             {
@@ -564,27 +578,23 @@ function ProjectCardUI({
           ))}
         </div>
 
-        <div className="flex items-center w-full mt-auto pt-1">
+        <div className="flex items-center justify-between gap-2 mt-auto pt-1">
           <span
             className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
             style={{ background: sc.bg, color: sc.color }}
           >
             {status}
           </span>
-          </div>
-        <div className="flex items-center w-full mt-auto pt-1">
-
           <button
             onClick={() => onSchedule(title)}
-            className="btn btn-gold w-full"
+            className="btn btn-gold"
             style={{
-              fontSize: "0.7rem",
-              padding: "0.34rem 0.72rem",
+              fontSize: "0.75rem",
+              padding: "0.4rem 0.9rem",
               flexShrink: 0,
             }}
-            title="Schedule Pre-Site visit Matchmaking Session"
           >
-            Schedule Pre-Site visit Matchmaking Session
+            Schedule
           </button>
         </div>
       </div>
@@ -699,170 +709,6 @@ function WelcomeProfilePopup({
   );
 }
 
-function ProjectApprovalHubModal({
-  isOpen,
-  projects,
-  loading,
-  approvingId,
-  onClose,
-  onApprove,
-}: {
-  isOpen: boolean;
-  projects: ActivationApprovalProject[];
-  loading: boolean;
-  approvingId: number | null;
-  onClose: () => void;
-  onApprove: (id: number) => void;
-}) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={onClose}>
-      <div
-        className="glass-card"
-        style={{
-          width: "min(960px, calc(100% - 1.25rem))",
-          maxHeight: "85vh",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          background: "#fff",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          style={{
-            padding: "1rem 1.1rem",
-            borderBottom: "1px solid var(--slate-200)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "0.7rem",
-          }}
-        >
-          <div>
-            <h3
-              style={{
-                margin: 0,
-                fontSize: "1rem",
-                fontFamily: "var(--font-display)",
-                color: "var(--navy-900)",
-                fontWeight: 800,
-              }}
-            >
-              Project Approval - Channel Partner Approval
-            </h3>
-            <p
-              style={{
-                margin: "0.25rem 0 0",
-                fontSize: "0.78rem",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              Onboarding Projects
-            </p>
-          </div>
-          <button className="btn btn-ghost" onClick={onClose}>
-            Close
-          </button>
-        </div>
-
-        <div style={{ padding: "0.9rem", overflowY: "auto" }}>
-          {loading ? (
-            <div className="page-loader" style={{ minHeight: "180px" }}>
-              <div className="spinner spinner-lg" />
-              <p className="page-loader-text">Loading onboarding projects…</p>
-            </div>
-          ) : projects.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-4xl mb-2">📭</p>
-              <p
-                style={{ color: "var(--color-text-muted)", fontSize: "0.9rem" }}
-              >
-                No activation projects found.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {projects.map((p) => (
-                <div
-                  key={p.id}
-                  className="card"
-                  style={{
-                    borderRadius: "var(--radius-xl)",
-                    padding: "0.95rem",
-                    border: "1px solid var(--slate-200)",
-                    boxShadow: "var(--shadow-sm)",
-                  }}
-                >
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "0.95rem",
-                      color: "var(--navy-900)",
-                      fontWeight: 800,
-                      fontFamily: "var(--font-display)",
-                    }}
-                  >
-                    {p.project_name}
-                  </p>
-
-                  <div
-                    style={{
-                      marginTop: "0.55rem",
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "0.4rem",
-                      fontSize: "0.76rem",
-                      color: "var(--color-text-secondary)",
-                    }}
-                  >
-                    <div>Developer: {p.developer_name || "-"}</div>
-                    <div>Location: {p.city || "-"}</div>
-                    <div>Type of Units: {p.unit_structure || "-"}</div>
-                    <div>Price Range: {p.price_range || "-"}</div>
-                    <div>Units Available: {p.units_left ?? 0}</div>
-                    <div>Status: {p.status}</div>
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: "0.7rem",
-                      padding: "0.55rem 0.65rem",
-                      borderRadius: "var(--radius-md)",
-                      background: "var(--slate-50)",
-                      border: "1px solid var(--slate-200)",
-                      fontSize: "0.74rem",
-                      color: "var(--color-text-muted)",
-                    }}
-                  >
-                    Total Approvals: {p.approval_count ?? 0}
-                  </div>
-
-                  <button
-                    className="btn btn-gold"
-                    style={{ marginTop: "0.65rem", width: "100%" }}
-                    onClick={() => onApprove(p.id)}
-                    disabled={
-                      approvingId === p.id || (p.my_approval_attempts ?? 0) > 0
-                    }
-                  >
-                    {approvingId === p.id
-                      ? "Submitting Approval..."
-                      : (p.my_approval_attempts ?? 0) > 0
-                        ? "Already Approved"
-                        : "Give Approval"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ══════════════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════════════ */
@@ -871,8 +717,6 @@ export default function HomePage() {
   const router = useRouter();
 
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
-  const [showApprovalHub, setShowApprovalHub] = useState(false);
-  const [showApprovalPrompt, setShowApprovalPrompt] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -881,13 +725,8 @@ export default function HomePage() {
   const [addProjectOpen, setAddProjectOpen] = useState(false);
 
   const [projects, setProjects] = useState<ApiProject[]>([]);
-  const [approvalProjects, setApprovalProjects] = useState<
-    ActivationApprovalProject[]
-  >([]);
   const [metaLoading, setMetaLoading] = useState(true);
   const [projectsLoading, setProjectsLoading] = useState(true);
-  const [approvalLoading, setApprovalLoading] = useState(false);
-  const [approvingId, setApprovingId] = useState<number | null>(null);
 
   /* ── pagination state ── */
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -908,9 +747,6 @@ export default function HomePage() {
     priceRange: { min: 100000, max: 50000000 },
   });
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
-
-  const isOwner = Boolean(user?.is_company_owner);
-  const isRegularCompanyUser = Boolean(user?.company_id) && !isOwner;
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace("/login");
@@ -1269,72 +1105,6 @@ export default function HomePage() {
     setTimeout(() => setToast(""), 3500);
   };
 
-  const loadApprovalProjects = useCallback(async () => {
-    try {
-      setApprovalLoading(true);
-      const res = await ActivationRequestAPI.getMyProjects();
-      setApprovalProjects(res.data ?? []);
-    } catch (e: unknown) {
-      const msg =
-        (e as { message?: string }).message ??
-        "Unable to load onboarding projects.";
-      setToast(msg);
-      setTimeout(() => setToast(""), 3000);
-    } finally {
-      setApprovalLoading(false);
-    }
-  }, []);
-
-  const openApprovalHub = async () => {
-    setShowApprovalHub(true);
-    await loadApprovalProjects();
-  };
-
-  const handleGiveApproval = async (id: number) => {
-    try {
-      setApprovingId(id);
-      await ActivationRequestAPI.approve(id);
-      setApprovalProjects((prev) => prev.filter((row) => row.id !== id));
-      setToast("Approval submitted successfully.");
-      setTimeout(() => setToast(""), 2200);
-    } catch (e: unknown) {
-      const msg =
-        (e as { message?: string }).message ?? "Approval submission failed.";
-      setToast(msg);
-      setTimeout(() => setToast(""), 3000);
-    } finally {
-      setApprovingId(null);
-    }
-  };
-
-  useEffect(() => {
-    if (isAuthenticated && !isRegularCompanyUser) {
-      loadApprovalProjects();
-    }
-  }, [isAuthenticated, isRegularCompanyUser, loadApprovalProjects]);
-
-  const pendingApprovalProjects = useMemo(
-    () => approvalProjects.filter((p) => (p.my_approval_attempts ?? 0) === 0),
-    [approvalProjects],
-  );
-  const approvalLeadCount = pendingApprovalProjects.length;
-
-  useEffect(() => {
-    if (approvalLeadCount === 0) {
-      setShowApprovalPrompt(false);
-      return;
-    }
-    setShowApprovalPrompt(true);
-  }, [approvalLeadCount]);
-
-  useEffect(() => {
-    if (showApprovalPrompt || approvalLeadCount === 0) return;
-    const timer = window.setTimeout(() => {
-      setShowApprovalPrompt(true);
-    }, 8000);
-    return () => window.clearTimeout(timer);
-  }, [showApprovalPrompt, approvalLeadCount]);
-
   if (isLoading || projectsLoading || metaLoading) return <PageLoader />;
   if (!isAuthenticated) return null;
 
@@ -1377,15 +1147,6 @@ export default function HomePage() {
         }}
       />
 
-      <ProjectApprovalHubModal
-        isOpen={showApprovalHub}
-        projects={pendingApprovalProjects}
-        loading={approvalLoading}
-        approvingId={approvingId}
-        onClose={() => setShowApprovalHub(false)}
-        onApprove={handleGiveApproval}
-      />
-
       {/* Toast */}
       {toast && (
         <div
@@ -1414,132 +1175,6 @@ export default function HomePage() {
             >
               ×
             </button>
-          </div>
-        </div>
-      )}
-
-      {!isRegularCompanyUser && approvalLeadCount > 0 && showApprovalPrompt && (
-        <div
-          style={{
-            position: "fixed",
-            right: "clamp(0.55rem, 2.5vw, 1rem)",
-            bottom: "clamp(0.6rem, 2.5vw, 1.05rem)",
-            zIndex: 9998,
-            width: "clamp(210px, 64vw, 236px)",
-            maxWidth: "calc(100vw - 1rem)",
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              border: "1px solid var(--slate-200)",
-              borderRadius: "14px",
-              boxShadow: "0 12px 30px rgba(15,23,42,0.14)",
-              padding:
-                "clamp(0.62rem, 2.2vw, 0.78rem) clamp(0.68rem, 2.4vw, 0.85rem)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: "0.55rem",
-              }}
-            >
-              <button
-                onClick={openApprovalHub}
-                title="Open pending approval projects"
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  textAlign: "left",
-                  padding: 0,
-                  cursor: "pointer",
-                  flex: 1,
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "clamp(0.72rem, 2.1vw, 0.8rem)",
-                    fontWeight: 800,
-                    color: "var(--navy-900)",
-                    lineHeight: 1.35,
-                  }}
-                >
-                  Projects Pending Channel Partner Approval
-                </p>
-                <p
-                  style={{
-                    margin: "0.3rem 0 0",
-                    fontSize: "clamp(0.66rem, 1.9vw, 0.72rem)",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
-                  Click to review {approvalLeadCount} pending project
-                  {approvalLeadCount !== 1 ? "s" : ""}
-                </p>
-              </button>
-
-              <button
-                onClick={() => setShowApprovalPrompt(false)}
-                title="Close"
-                aria-label="Close pending approval popup"
-                style={{
-                  width: "1.45rem",
-                  height: "1.45rem",
-                  borderRadius: "999px",
-                  border: "1px solid var(--slate-200)",
-                  background: "#fff",
-                  color: "var(--color-text-muted)",
-                  lineHeight: 1,
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginTop: "0.6rem",
-                gap: "0.55rem",
-              }}
-            >
-              <span
-                style={{
-                  minWidth: "1.35rem",
-                  height: "1.35rem",
-                  borderRadius: "999px",
-                  background: "#ef4444",
-                  color: "#fff",
-                  fontSize: "0.7rem",
-                  fontWeight: 800,
-                  lineHeight: "1.35rem",
-                  textAlign: "center",
-                  padding: "0 0.25rem",
-                }}
-              >
-                {approvalLeadCount}
-              </span>
-
-              <button
-                onClick={openApprovalHub}
-                className="btn btn-gold"
-                style={{
-                  fontSize: "0.72rem",
-                  padding: "0.4rem 0.7rem",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Give Approval
-              </button>
-            </div>
           </div>
         </div>
       )}

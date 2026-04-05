@@ -29,6 +29,22 @@ function sanitizeLabel(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function uniqueSanitized(values: string[]): string[] {
+  const seen = new Set<string>();
+  const output: string[] = [];
+
+  values.forEach((value) => {
+    const clean = sanitizeLabel(value);
+    if (!clean) return;
+    const key = clean.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    output.push(clean);
+  });
+
+  return output;
+}
+
 function SearchableMultiDropdown({
   label,
   options,
@@ -295,6 +311,35 @@ export default function SidebarFilter({
   onFiltersChange,
   options,
 }: SidebarFilterProps) {
+  const projectOptions = useMemo(
+    () => uniqueSanitized(options.projects),
+    [options.projects],
+  );
+  const categoryOptions = useMemo(
+    () => uniqueSanitized(options.categories),
+    [options.categories],
+  );
+  const tagOptions = useMemo(
+    () => uniqueSanitized(options.tags),
+    [options.tags],
+  );
+  const amenityOptions = useMemo(
+    () => uniqueSanitized(options.amenities),
+    [options.amenities],
+  );
+  const developerOptions = useMemo(
+    () => uniqueSanitized(options.developers),
+    [options.developers],
+  );
+  const locationOptions = useMemo(
+    () => uniqueSanitized(options.locations),
+    [options.locations],
+  );
+  const unitTypeOptions = useMemo(
+    () => uniqueSanitized(options.unitTypes),
+    [options.unitTypes],
+  );
+
   const update = <K extends keyof FilterState>(
     key: K,
     value: FilterState[K],
@@ -409,49 +454,49 @@ export default function SidebarFilter({
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <SearchableSingleDropdown
             label="Location"
-            options={options.locations.map(sanitizeLabel)}
+            options={locationOptions}
             selected={filters.location}
             onChange={(value) => update("location", value)}
           />
 
           <SearchableMultiDropdown
             label="Project Name"
-            options={options.projects.map(sanitizeLabel)}
+            options={projectOptions}
             selected={filters.projectName}
             onChange={(value) => update("projectName", value)}
           />
 
           <SearchableMultiDropdown
             label="Intent/Category"
-            options={options.categories.map(sanitizeLabel)}
+            options={categoryOptions}
             selected={filters.categories}
             onChange={(value) => update("categories", value)}
           />
 
           <SearchableMultiDropdown
             label="Amenities"
-            options={options.amenities.map(sanitizeLabel)}
+            options={amenityOptions}
             selected={filters.amenities}
             onChange={(value) => update("amenities", value)}
           />
 
           <SearchableMultiDropdown
             label="Unit Type"
-            options={options.unitTypes.map(sanitizeLabel)}
+            options={unitTypeOptions}
             selected={filters.unitTypes}
             onChange={(value) => update("unitTypes", value)}
           />
 
           <SearchableMultiDropdown
             label="Tags"
-            options={options.tags.map(sanitizeLabel)}
+            options={tagOptions}
             selected={filters.tags}
             onChange={(value) => update("tags", value)}
           />
 
           <SearchableSingleDropdown
             label="Developer"
-            options={options.developers.map(sanitizeLabel)}
+            options={developerOptions}
             selected={filters.developer}
             onChange={(value) => update("developer", value)}
           />
@@ -488,46 +533,46 @@ export default function SidebarFilter({
           </div>
 
           <div className="mb-4">
-  <div className="flex items-center justify-between mb-1">
-    <label className="label mb-0">Min Area (sq.ft)</label>
-    <span
-      className="text-xs font-semibold"
-      style={{ color: "var(--color-secondary)" }}
-    >
-      {filters.areaMin} sq.ft
-    </span>
-  </div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">Min Area (sq.ft)</label>
+              <span
+                className="text-xs font-semibold"
+                style={{ color: "var(--color-secondary)" }}
+              >
+                {filters.areaMin} sq.ft
+              </span>
+            </div>
 
-  <input
-    type="range"
-    className="w-full"
-    min={options.areaRange.min}
-    max={filters.areaMax}
-    value={filters.areaMin}
-    onChange={(e) => update("areaMin", Number(e.target.value))}
-  />
-</div>
+            <input
+              type="range"
+              className="w-full"
+              min={options.areaRange.min}
+              max={filters.areaMax}
+              value={filters.areaMin}
+              onChange={(e) => update("areaMin", Number(e.target.value))}
+            />
+          </div>
 
-<div className="mb-4">
-  <div className="flex items-center justify-between mb-1">
-    <label className="label mb-0">Max Area (sq.ft)</label>
-    <span
-      className="text-xs font-semibold"
-      style={{ color: "var(--color-secondary)" }}
-    >
-      {filters.areaMax} sq.ft
-    </span>
-  </div>
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">Max Area (sq.ft)</label>
+              <span
+                className="text-xs font-semibold"
+                style={{ color: "var(--color-secondary)" }}
+              >
+                {filters.areaMax} sq.ft
+              </span>
+            </div>
 
-  <input
-    type="range"
-    className="w-full"
-    min={filters.areaMin}
-    max={options.areaRange.max}
-    value={filters.areaMax}
-    onChange={(e) => update("areaMax", Number(e.target.value))}
-  />
-</div>
+            <input
+              type="range"
+              className="w-full"
+              min={filters.areaMin}
+              max={options.areaRange.max}
+              value={filters.areaMax}
+              onChange={(e) => update("areaMax", Number(e.target.value))}
+            />
+          </div>
 
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1">

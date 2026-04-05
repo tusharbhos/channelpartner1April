@@ -13,7 +13,7 @@ class CustomerSeeder extends Seeder
     {
         // Get regular users (non-admin)
         $users = User::where('role', 'user')->get();
-        
+
         // If no regular users exist, create a demo user
         if ($users->isEmpty()) {
             $demoUser = User::create([
@@ -109,7 +109,7 @@ class CustomerSeeder extends Seeder
                 'meeting_time' => '10:30:00',
                 'notes' => 'Urgent requirement, need possession within 3 months, budget 1-1.2 Cr',
                 'project_name' => 'Lodha Palava',
-                'status' => 'converted',
+                'status' => 'Booked',
             ],
             [
                 'nickname' => 'Joshi - Senior Citizen',
@@ -169,7 +169,7 @@ class CustomerSeeder extends Seeder
         foreach ($users as $index => $user) {
             // Assign 3-5 customers per user
             $userCustomers = array_slice($customers, ($index * 5) % count($customers), 5);
-            
+
             foreach ($userCustomers as $customerData) {
                 Customer::create(array_merge($customerData, [
                     'user_id' => $user->id,

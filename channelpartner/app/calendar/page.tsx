@@ -773,6 +773,9 @@ export default function CalendarPage() {
             meeting_date: p.meeting_date,
             meeting_time: p.meeting_time ?? "",
             project_name: p.project_name,
+            created_by_name: p.created_by_name,
+            assigned_to_user_name: p.assigned_to_user_name,
+            updated_by_name: p.updated_by_name,
           }),
         );
       } else if (c.meeting_date) {

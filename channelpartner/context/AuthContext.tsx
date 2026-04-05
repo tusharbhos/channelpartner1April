@@ -13,26 +13,56 @@ import { AuthAPI, ApiUser, getToken, setToken, removeToken } from "@/lib/api";
 
 interface User {
   id: number;
+  company_id?: number;
   name: string;
   email: string;
   company_name: string;
+  company_size?: string;
+  profile_image?: string;
+  profile_image_url?: string;
+  rera_no?: string;
+  phone?: string;
+  city?: string;
+  address?: string;
   role: "user" | "admin";
+  is_company_owner?: boolean;
   email_verified: boolean;
   is_active: boolean;
+  experience_level?: string;
+  primary_market?: string;
+  budget_segments?: string[];
+  max_ticket_size?: string | number;
+  buyer_types?: string[];
+  project_preference?: string[];
+  micro_markets?: string;
+  sell_cities?: string;
+  avg_leads_per_month?: number;
+  avg_site_visits_per_month?: number;
+  avg_closures_per_month?: number;
+  selling_style?: "own_leads" | "developer_leads" | "both";
+  activation_intent?:
+    | "immediately"
+    | "in_7_days"
+    | "in_15_plus_days"
+    | "exploring";
+  commitment_signal?: boolean;
+  available_slots?: string[];
+  channels_used?: string[];
+  onboarding_step?: number;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (
     email: string,
-    password: string
+    password: string,
   ) => Promise<{
     success: boolean;
     error?: string;
     needsVerification?: boolean;
   }>;
   register: (
-    data: RegisterData
+    data: RegisterData,
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
@@ -43,8 +73,10 @@ interface AuthContextType {
 interface RegisterData {
   name: string;
   company_name: string;
+  company_size: string;
   rera_no: string;
   phone: string;
+  city: string;
   email: string;
   address: string;
   password: string;
@@ -102,7 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await AuthAPI.login({ email, password });
 
-      setToken(response.token);
+      if (!response.token) {
+        return {
+          success: false,
+          error: "Login failed. Token not received.",
+        };
+      }
 
       if (!response.user.email_verified) {
         return {
@@ -120,6 +157,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
+      setToken(response.token);
+
       setUser(response.user as unknown as User);
       return { success: true };
     } catch (error: unknown) {
@@ -135,8 +174,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: RegisterData) => {
     try {
       const response = await AuthAPI.register(data);
-      setToken(response.token);
-      setUser(response.user as unknown as User);
+      if (response.token) {
+        setToken(response.token);
+        setUser(response.user as unknown as User);
+      } else {
+        removeToken();
+        setUser(null);
+      }
       return { success: true };
     } catch (error: unknown) {
       const e = error as ApiError;
