@@ -296,6 +296,28 @@ textarea.input-field { resize: vertical; }
 .auth-form-input.textarea {
   resize: none;
 }
+
+/* Button variant: force flex so arrow stays on same line as chips */
+button.auth-form-input {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Select variant: hide native arrow, show custom chevron */
+select.auth-form-input {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  cursor: pointer;
+}
 .auth-field-error {
   color: var(--red-600);
   font-size: 0.72rem;

@@ -44,8 +44,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'selling_style',
         'activation_intent',
         'commitment_signal',
-        'available_slots',
-        'channels_used',
         'onboarding_step',
     ];
 
@@ -59,11 +57,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'password' => 'hashed',
         'is_active' => 'boolean',
         'is_company_owner' => 'boolean',
+        'primary_market' => 'array',
         'budget_segments' => 'array',
         'buyer_types' => 'array',
         'project_preference' => 'array',
-        'available_slots' => 'array',
-        'channels_used' => 'array',
+        'selling_style' => 'array',
         'commitment_signal' => 'boolean',
         'max_ticket_size' => 'decimal:2',
         'avg_leads_per_month' => 'integer',

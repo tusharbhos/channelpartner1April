@@ -12,7 +12,7 @@ return new class extends Migration
             $table->string('city', 100)->nullable()->after('phone');
 
             $table->string('experience_level', 30)->nullable()->after('address');
-            $table->string('primary_market', 60)->nullable()->after('experience_level');
+            $table->json('primary_market')->nullable()->after('experience_level');
             $table->json('budget_segments')->nullable()->after('primary_market');
             $table->decimal('max_ticket_size', 14, 2)->nullable()->after('budget_segments');
             $table->json('buyer_types')->nullable()->after('max_ticket_size');
@@ -22,12 +22,10 @@ return new class extends Migration
             $table->unsignedInteger('avg_leads_per_month')->nullable()->after('sell_cities');
             $table->unsignedInteger('avg_site_visits_per_month')->nullable()->after('avg_leads_per_month');
             $table->unsignedInteger('avg_closures_per_month')->nullable()->after('avg_site_visits_per_month');
-            $table->enum('selling_style', ['own_leads', 'developer_leads', 'both'])->nullable()->after('avg_closures_per_month');
+            $table->json('selling_style')->nullable()->after('avg_closures_per_month');
             $table->enum('activation_intent', ['immediately', 'in_7_days', 'in_15_plus_days', 'exploring'])->nullable()->after('selling_style');
             $table->boolean('commitment_signal')->nullable()->after('activation_intent');
-            $table->json('available_slots')->nullable()->after('commitment_signal');
-            $table->json('channels_used')->nullable()->after('available_slots');
-            $table->unsignedTinyInteger('onboarding_step')->default(1)->after('channels_used');
+            $table->unsignedTinyInteger('onboarding_step')->default(1)->after('commitment_signal');
         });
     }
 
@@ -49,8 +47,6 @@ return new class extends Migration
                 'selling_style',
                 'activation_intent',
                 'commitment_signal',
-                'available_slots',
-                'channels_used',
                 'onboarding_step',
             ]);
         });

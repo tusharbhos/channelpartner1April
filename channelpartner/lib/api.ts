@@ -94,7 +94,7 @@ export interface ApiUser {
   is_active: boolean;
   email_verified: boolean;
   experience_level?: string;
-  primary_market?: string;
+  primary_market?: string[];
   budget_segments?: string[];
   max_ticket_size?: string | number;
   buyer_types?: string[];
@@ -104,7 +104,7 @@ export interface ApiUser {
   avg_leads_per_month?: number;
   avg_site_visits_per_month?: number;
   avg_closures_per_month?: number;
-  selling_style?: "own_leads" | "developer_leads" | "both";
+  selling_style?: string[];
   activation_intent?:
     | "immediately"
     | "in_7_days"
@@ -181,7 +181,7 @@ export interface ProfileUpdatePayload {
   city?: string;
   address?: string;
   experience_level?: string;
-  primary_market?: string;
+  primary_market?: string[];
   budget_segments?: string[];
   max_ticket_size?: number;
   buyer_types?: string[];
@@ -191,7 +191,7 @@ export interface ProfileUpdatePayload {
   avg_leads_per_month?: number;
   avg_site_visits_per_month?: number;
   avg_closures_per_month?: number;
-  selling_style?: "own_leads" | "developer_leads" | "both";
+  selling_style?: string[];
   available_slots?: string[];
   channels_used?: string[];
   onboarding_step?: number;

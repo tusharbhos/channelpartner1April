@@ -29,7 +29,7 @@ interface User {
   email_verified: boolean;
   is_active: boolean;
   experience_level?: string;
-  primary_market?: string;
+  primary_market?: string[];
   budget_segments?: string[];
   max_ticket_size?: string | number;
   buyer_types?: string[];
@@ -39,15 +39,13 @@ interface User {
   avg_leads_per_month?: number;
   avg_site_visits_per_month?: number;
   avg_closures_per_month?: number;
-  selling_style?: "own_leads" | "developer_leads" | "both";
+  selling_style?: string[];
   activation_intent?:
     | "immediately"
     | "in_7_days"
     | "in_15_plus_days"
     | "exploring";
   commitment_signal?: boolean;
-  available_slots?: string[];
-  channels_used?: string[];
   onboarding_step?: number;
 }
 

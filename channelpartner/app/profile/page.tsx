@@ -19,7 +19,7 @@ type ProfileForm = {
   city: string;
   address: string;
   experience_level: string;
-  primary_market: string;
+  primary_market: string[];
   budget_segments: string[];
   max_ticket_size: string;
   buyer_types: string[];
@@ -29,35 +29,23 @@ type ProfileForm = {
   avg_leads_per_month: string;
   avg_site_visits_per_month: string;
   avg_closures_per_month: string;
-  selling_style: "" | "own_leads" | "developer_leads" | "both";
-  available_slots: string[];
-  channels_used: string[];
+  selling_style: string[];
 };
 
 const budgetOptions = [
-  "<50L",
-  "50L-1.5CR",
-  "1.5CR-3CR",
-  "3CR-5CR",
-  "5CR-10CR",
-  "10CR-25CR",
-  "25CR-50CR",
-  "50CR+",
+  "Affordable",
+  "Regular (50L-1.5CR)",
+  "Premium (1.5CR-5CR)",
+  "Luxury (5CR-10CR)",
+  "Ultra Luxury (10CR+)",
 ];
 const buyerTypeOptions = ["End Users", "Investors", "NRIs", "Mix"];
-const slotOptions = ["Weekday evenings", "Weekends", "Flexible"];
-const channelOptions = [
-  "WhatsApp",
-  "Instagram",
-  "Broker Network",
-  "NRI Network",
-];
 const projectPreferenceOptions = [
-  "Ready to Move",
-  "Nearing Possession",
+  "New Launch",
+  "Pre Launch",
   "Under Construction",
-  "Premium Projects",
-  "Bulk Inventory Projects",
+  "Nearing Possession",
+  "Ready to Move",
 ];
 const monthlyVolumeOptions = [
   { label: "1-5", value: "5" },
@@ -79,6 +67,180 @@ const companySizeOptions = [
   { label: "100+", value: "100+" },
 ];
 
+const primaryMarketOptions = [
+  { label: "Primary New Property", value: "newProperty" },
+  { label: "Secondary Re-sale", value: "secondaryResale" },
+  { label: "Residential", value: "residential" },
+  { label: "Commercial", value: "commercial" },
+  { label: "To Commercial Leasing", value: "to_commercial_leasing" },
+  { label: "Preleased Commercial", value: "preleased_commercial" },
+  { label: "Preleased Residential", value: "preleased_residential" },
+  { label: "Residential Rental", value: "residential_rental" },
+  { label: "Mandate", value: "mandate" },
+  { label: "Weekend home", value: "weekend_home" },
+  { label: "Retirement home", value: "retirement_home" },
+  { label: "Farmhouse", value: "farmhouse" },
+  { label: "NA Plots", value: "na_plots" },
+];
+
+const sellingStyleOptions = [
+  { label: "Generate your own leads", value: "own_leads" },
+  { label: "Work on developer leads", value: "developer_leads" },
+  { label: "Referral", value: "referral" },
+  {
+    label: "Channel Partner Collaboration",
+    value: "channel_partner",
+  },
+  { label: "Through Portal (Magicbricks, etc)", value: "portal" },
+];
+
+type MultiSelectOption = {
+  label: string;
+  value: string;
+};
+
+function SearchableMultiDropdown({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: MultiSelectOption[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const onDocClick = (event: MouseEvent) => {
+      if (!dropdownRef.current) return;
+      if (!dropdownRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const selectedOptions = useMemo(
+    () =>
+      selected
+        .map((value) => options.find((opt) => opt.value === value))
+        .filter((opt): opt is MultiSelectOption => Boolean(opt)),
+    [options, selected],
+  );
+
+  const toggleValue = (value: string) => {
+    const exists = selected.includes(value);
+    onChange(
+      exists ? selected.filter((item) => item !== value) : [...selected, value],
+    );
+  };
+
+  const removeValue = (value: string) => {
+    onChange(selected.filter((item) => item !== value));
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        className="auth-form-input"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <div className="flex-1 min-w-0">
+          {selectedOptions.length === 0 ? (
+            <span className="truncate auth-text-muted block">
+              {`Select ${label.toLowerCase()}`}
+            </span>
+          ) : (
+            <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap scrollbar-hide">
+              {selectedOptions.slice(0, 2).map((opt) => (
+                <span
+                  key={opt.value}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {opt.label}
+                  <span
+                    className="cursor-pointer text-[11px] leading-none"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeValue(opt.value);
+                    }}
+                    aria-label={`Remove ${opt.label}`}
+                  >
+                    ×
+                  </span>
+                </span>
+              ))}
+              {selectedOptions.length > 2 && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
+                  +{selectedOptions.length - 2}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        <svg
+          className="w-4 h-4 opacity-60 shrink-0 transition-transform duration-200"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-30 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+          <div className="max-h-56 overflow-y-auto p-2 space-y-1">
+            {options.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer text-sm"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(opt.value)}
+                  onChange={() => toggleValue(opt.value)}
+                />
+                <span>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between p-2 border-t border-gray-100">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => onChange([])}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              className="btn btn-gold"
+              onClick={() => setOpen(false)}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function toCompanySizeLabel(value: string): string {
   const found = companySizeOptions.find((opt) => opt.value === value);
   return found ? found.label : value || "-";
@@ -89,18 +251,64 @@ function toVolumeLabel(value: string): string {
   return found ? found.label : "-";
 }
 
-function toPrimaryMarketLabel(value: string): string {
-  if (value === "residential") return "Residential";
-  if (value === "commercial") return "Commercial";
-  if (value === "both") return "Both";
-  return "-";
+function parseMultiSelectValue(
+  value: string | string[] | null | undefined,
+): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
 }
 
-function toSellingStyleLabel(value: ProfileForm["selling_style"]): string {
-  if (value === "own_leads") return "Generate your own leads";
-  if (value === "developer_leads") return "Work on developer leads";
-  if (value === "both") return "Both";
-  return "-";
+function normalizeBudgetSegments(
+  values: string[] | null | undefined,
+): string[] {
+  if (!values?.length) return [];
+
+  const legacyToNew: Record<string, string> = {
+    "<50L": "Affordable",
+    "50L-1.5CR": "Regular (50L-1.5CR)",
+    "1.5CR-3CR": "Premium (1.5CR-5CR)",
+    "3CR-5CR": "Premium (1.5CR-5CR)",
+    "5CR-10CR": "Luxury (5CR-10CR)",
+    "10CR-25CR": "Ultra Luxury (10CR+)",
+    "25CR-50CR": "Ultra Luxury (10CR+)",
+    "50CR+": "Ultra Luxury (10CR+)",
+  };
+
+  const allowed = new Set(budgetOptions);
+
+  return Array.from(
+    new Set(
+      values
+        .map((value) => legacyToNew[value] ?? value)
+        .filter((value) => allowed.has(value)),
+    ),
+  );
+}
+
+function toPrimaryMarketLabel(values: string[]): string {
+  if (!values.length) return "-";
+
+  return values
+    .map((value) => {
+      const found = primaryMarketOptions.find((opt) => opt.value === value);
+      return found ? found.label : value;
+    })
+    .join(", ");
+}
+
+function toSellingStyleLabel(values: string[]): string {
+  if (!values.length) return "-";
+
+  return values
+    .map((value) => {
+      const found = sellingStyleOptions.find((opt) => opt.value === value);
+      return found ? found.label : value;
+    })
+    .join(", ");
 }
 
 export default function ProfilePage() {
@@ -124,8 +332,8 @@ export default function ProfilePage() {
     city: user?.city ?? "",
     address: user?.address ?? "",
     experience_level: user?.experience_level ?? "",
-    primary_market: user?.primary_market ?? "",
-    budget_segments: user?.budget_segments ?? [],
+    primary_market: parseMultiSelectValue(user?.primary_market),
+    budget_segments: normalizeBudgetSegments(user?.budget_segments),
     max_ticket_size: user?.max_ticket_size ? String(user.max_ticket_size) : "",
     buyer_types: user?.buyer_types ?? [],
     project_preference: user?.project_preference ?? [],
@@ -140,9 +348,7 @@ export default function ProfilePage() {
     avg_closures_per_month: user?.avg_closures_per_month
       ? String(user.avg_closures_per_month)
       : "",
-    selling_style: (user?.selling_style as ProfileForm["selling_style"]) ?? "",
-    available_slots: user?.available_slots ?? [],
-    channels_used: user?.channels_used ?? [],
+    selling_style: parseMultiSelectValue(user?.selling_style),
   }));
 
   useEffect(() => {
@@ -163,8 +369,8 @@ export default function ProfilePage() {
       city: user.city ?? "",
       address: user.address ?? "",
       experience_level: user.experience_level ?? "",
-      primary_market: user.primary_market ?? "",
-      budget_segments: user.budget_segments ?? [],
+      primary_market: parseMultiSelectValue(user.primary_market),
+      budget_segments: normalizeBudgetSegments(user.budget_segments),
       max_ticket_size: user.max_ticket_size ? String(user.max_ticket_size) : "",
       buyer_types: user.buyer_types ?? [],
       project_preference: user.project_preference ?? [],
@@ -179,9 +385,7 @@ export default function ProfilePage() {
       avg_closures_per_month: user.avg_closures_per_month
         ? String(user.avg_closures_per_month)
         : "",
-      selling_style: (user.selling_style as ProfileForm["selling_style"]) ?? "",
-      available_slots: user.available_slots ?? [],
-      channels_used: user.channels_used ?? [],
+      selling_style: parseMultiSelectValue(user.selling_style),
     });
     setProfileImageFile(null);
     setProfileImagePreview(user.profile_image_url ?? "");
@@ -209,27 +413,6 @@ export default function ProfilePage() {
     setMessage("");
   };
 
-  const toggleArray = (
-    key:
-      | "budget_segments"
-      | "buyer_types"
-      | "project_preference"
-      | "available_slots"
-      | "channels_used",
-    value: string,
-  ) => {
-    setForm((prev) => {
-      const has = prev[key].includes(value);
-      return {
-        ...prev,
-        [key]: has
-          ? prev[key].filter((v) => v !== value)
-          : [...prev[key], value],
-      };
-    });
-    setMessage("");
-  };
-
   const saveStep = async (targetStep?: Step) => {
     if (!user) return;
 
@@ -243,8 +426,9 @@ export default function ProfilePage() {
     payload.append("address", form.address);
     if (form.experience_level)
       payload.append("experience_level", form.experience_level);
-    if (form.primary_market)
-      payload.append("primary_market", form.primary_market);
+    form.primary_market.forEach((value) =>
+      payload.append("primary_market[]", value),
+    );
     form.budget_segments.forEach((value) =>
       payload.append("budget_segments[]", value),
     );
@@ -265,12 +449,8 @@ export default function ProfilePage() {
       );
     if (form.avg_closures_per_month)
       payload.append("avg_closures_per_month", form.avg_closures_per_month);
-    if (form.selling_style) payload.append("selling_style", form.selling_style);
-    form.available_slots.forEach((value) =>
-      payload.append("available_slots[]", value),
-    );
-    form.channels_used.forEach((value) =>
-      payload.append("channels_used[]", value),
+    form.selling_style.forEach((value) =>
+      payload.append("selling_style[]", value),
     );
     payload.append("onboarding_step", String(targetStep ?? step));
     if (profileImageFile) payload.append("profile_image", profileImageFile);
@@ -323,125 +503,181 @@ export default function ProfilePage() {
 
             {showSummary && (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="auth-text-muted">Name:</span>{" "}
-                    {form.name || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Mobile:</span>{" "}
-                    {form.phone || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Company Name:</span>{" "}
-                    {form.company_name || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Company Size:</span>{" "}
-                    {toCompanySizeLabel(form.company_size)}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Profile Image:</span>{" "}
-                    {profileImagePreview ? (
-                      <img
-                        src={profileImagePreview}
-                        alt="Profile"
-                        style={{
-                          width: 56,
-                          height: 56,
-                          objectFit: "cover",
-                          borderRadius: 999,
-                          display: "inline-block",
-                          verticalAlign: "middle",
-                          border: "2px solid var(--navy-100)",
-                        }}
-                      />
-                    ) : (
-                      "-"
-                    )}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">RERA No:</span>{" "}
-                    {form.rera_no || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">City:</span>{" "}
-                    {form.city || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Address:</span>{" "}
-                    {form.address || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Experience:</span>{" "}
-                    {form.experience_level || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Primary Market:</span>{" "}
-                    {toPrimaryMarketLabel(form.primary_market)}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Budget Expertise:</span>{" "}
-                    {form.budget_segments.length
-                      ? form.budget_segments.join(", ")
-                      : "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">
-                      Max Ticket Size Handled:
-                    </span>{" "}
-                    {form.max_ticket_size || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Buyer Type:</span>{" "}
-                    {form.buyer_types.length
-                      ? form.buyer_types.join(", ")
-                      : "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Avg Leads/Month:</span>{" "}
-                    {toVolumeLabel(form.avg_leads_per_month)}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">
-                      Avg Site Visits/Month:
-                    </span>{" "}
-                    {toVolumeLabel(form.avg_site_visits_per_month)}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Avg Closures/Month:</span>{" "}
-                    {toVolumeLabel(form.avg_closures_per_month)}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Selling Style:</span>{" "}
-                    {toSellingStyleLabel(form.selling_style)}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Project Preference:</span>{" "}
-                    {form.project_preference.length
-                      ? form.project_preference.join(", ")
-                      : "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Micro-markets:</span>{" "}
-                    {form.micro_markets || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Selling Cities:</span>{" "}
-                    {form.sell_cities || "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Available Slots:</span>{" "}
-                    {form.available_slots.length
-                      ? form.available_slots.join(", ")
-                      : "-"}
-                  </div>
-                  <div>
-                    <span className="auth-text-muted">Channels Used:</span>{" "}
-                    {form.channels_used.length
-                      ? form.channels_used.join(", ")
-                      : "-"}
-                  </div>
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      <tr className="border-b border-gray-100">
+                        <th className="w-44 px-3 py-2 text-left font-semibold text-gray-700">
+                          Name
+                        </th>
+                        <td className="px-3 py-2">{form.name || "-"}</td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Mobile
+                        </th>
+                        <td className="px-3 py-2">{form.phone || "-"}</td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Company Name
+                        </th>
+                        <td className="px-3 py-2">
+                          {form.company_name || "-"}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Company Size
+                        </th>
+                        <td className="px-3 py-2">
+                          {toCompanySizeLabel(form.company_size)}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Profile Image
+                        </th>
+                        <td className="px-3 py-2">
+                          {profileImagePreview ? (
+                            <img
+                              src={profileImagePreview}
+                              alt="Profile"
+                              style={{
+                                width: 56,
+                                height: 56,
+                                objectFit: "cover",
+                                borderRadius: 999,
+                                display: "inline-block",
+                                verticalAlign: "middle",
+                                border: "2px solid var(--navy-100)",
+                              }}
+                            />
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          RERA No
+                        </th>
+                        <td className="px-3 py-2">{form.rera_no || "-"}</td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          City
+                        </th>
+                        <td className="px-3 py-2">{form.city || "-"}</td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Address
+                        </th>
+                        <td className="px-3 py-2">{form.address || "-"}</td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Experience
+                        </th>
+                        <td className="px-3 py-2">
+                          {form.experience_level || "-"}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Segment Expertise
+                        </th>
+                        <td className="px-3 py-2">
+                          {toPrimaryMarketLabel(form.primary_market)}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Budget Expertise
+                        </th>
+                        <td className="px-3 py-2">
+                          {form.budget_segments.length
+                            ? form.budget_segments.join(", ")
+                            : "-"}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Max Ticket Size Handled
+                        </th>
+                        <td className="px-3 py-2">
+                          {form.max_ticket_size || "-"}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Buyer Type
+                        </th>
+                        <td className="px-3 py-2">
+                          {form.buyer_types.length
+                            ? form.buyer_types.join(", ")
+                            : "-"}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Avg Leads/Month
+                        </th>
+                        <td className="px-3 py-2">
+                          {toVolumeLabel(form.avg_leads_per_month)}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Avg Site Visits/Month
+                        </th>
+                        <td className="px-3 py-2">
+                          {toVolumeLabel(form.avg_site_visits_per_month)}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Avg Closures/Month
+                        </th>
+                        <td className="px-3 py-2">
+                          {toVolumeLabel(form.avg_closures_per_month)}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Selling Style
+                        </th>
+                        <td className="px-3 py-2">
+                          {toSellingStyleLabel(form.selling_style)}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Project Preference
+                        </th>
+                        <td className="px-3 py-2">
+                          {form.project_preference.length
+                            ? form.project_preference.join(", ")
+                            : "-"}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Micro-markets
+                        </th>
+                        <td className="px-3 py-2">
+                          {form.micro_markets || "-"}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                          Selling Cities
+                        </th>
+                        <td className="px-3 py-2">{form.sell_cities || "-"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
 
                 <div className="flex gap-3">
@@ -647,36 +883,24 @@ export default function ProfilePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="auth-form-label">Primary Market</label>
-                    <select
-                      className="auth-form-input"
-                      value={form.primary_market}
-                      onChange={(e) =>
-                        setValue("primary_market", e.target.value)
-                      }
-                    >
-                      <option value="">Select</option>
-                      <option value="residential">Residential</option>
-                      <option value="commercial">Commercial</option>
-                      <option value="both">Both</option>
-                    </select>
+                    <label className="auth-form-label">Segment Expertise</label>
+                    <SearchableMultiDropdown
+                      label="Segment Expertise"
+                      options={primaryMarketOptions}
+                      selected={form.primary_market}
+                      onChange={(values) => setValue("primary_market", values)}
+                    />
                   </div>
                 </div>
 
                 <div>
                   <label className="auth-form-label">Budget Expertise</label>
-                  <div className="flex flex-wrap gap-2">
-                    {budgetOptions.map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        className={`btn ${form.budget_segments.includes(v) ? "btn-gold" : "btn-ghost"}`}
-                        onClick={() => toggleArray("budget_segments", v)}
-                      >
-                        {v}
-                      </button>
-                    ))}
-                  </div>
+                  <SearchableMultiDropdown
+                    label="Budget Expertise"
+                    options={budgetOptions.map((v) => ({ label: v, value: v }))}
+                    selected={form.budget_segments}
+                    onChange={(values) => setValue("budget_segments", values)}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -697,18 +921,15 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <label className="auth-form-label">Buyer Type</label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {buyerTypeOptions.map((v) => (
-                        <button
-                          key={v}
-                          type="button"
-                          className={`btn ${form.buyer_types.includes(v) ? "btn-gold" : "btn-ghost"}`}
-                          onClick={() => toggleArray("buyer_types", v)}
-                        >
-                          {v}
-                        </button>
-                      ))}
-                    </div>
+                    <SearchableMultiDropdown
+                      label="Buyer Type"
+                      options={buyerTypeOptions.map((v) => ({
+                        label: v,
+                        value: v,
+                      }))}
+                      selected={form.buyer_types}
+                      onChange={(values) => setValue("buyer_types", values)}
+                    />
                   </div>
                 </div>
 
@@ -793,39 +1014,27 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div>
                   <label className="auth-form-label">Selling Style</label>
-                  <select
-                    className="auth-form-input"
-                    value={form.selling_style}
-                    onChange={(e) =>
-                      setValue(
-                        "selling_style",
-                        e.target.value as ProfileForm["selling_style"],
-                      )
-                    }
-                  >
-                    <option value="">Select</option>
-                    <option value="own_leads">Generate your own leads</option>
-                    <option value="developer_leads">
-                      Work on developer leads
-                    </option>
-                    <option value="both">Both</option>
-                  </select>
+                  <SearchableMultiDropdown
+                    label="Selling Style"
+                    options={sellingStyleOptions}
+                    selected={form.selling_style}
+                    onChange={(values) => setValue("selling_style", values)}
+                  />
                 </div>
 
                 <div>
                   <label className="auth-form-label">Project Preference</label>
-                  <div className="flex flex-wrap gap-2">
-                    {projectPreferenceOptions.map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        className={`btn ${form.project_preference.includes(v) ? "btn-gold" : "btn-ghost"}`}
-                        onClick={() => toggleArray("project_preference", v)}
-                      >
-                        {v}
-                      </button>
-                    ))}
-                  </div>
+                  <SearchableMultiDropdown
+                    label="Project Preference"
+                    options={projectPreferenceOptions.map((v) => ({
+                      label: v,
+                      value: v,
+                    }))}
+                    selected={form.project_preference}
+                    onChange={(values) =>
+                      setValue("project_preference", values)
+                    }
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -850,38 +1059,6 @@ export default function ProfilePage() {
                       value={form.sell_cities}
                       onChange={(e) => setValue("sell_cities", e.target.value)}
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="auth-form-label">Available Slots</label>
-                  <div className="flex flex-wrap gap-2">
-                    {slotOptions.map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        className={`btn ${form.available_slots.includes(v) ? "btn-gold" : "btn-ghost"}`}
-                        onClick={() => toggleArray("available_slots", v)}
-                      >
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="auth-form-label">Channels Used</label>
-                  <div className="flex flex-wrap gap-2">
-                    {channelOptions.map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        className={`btn ${form.channels_used.includes(v) ? "btn-gold" : "btn-ghost"}`}
-                        onClick={() => toggleArray("channels_used", v)}
-                      >
-                        {v}
-                      </button>
-                    ))}
                   </div>
                 </div>
 
