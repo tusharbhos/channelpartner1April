@@ -135,13 +135,20 @@ export interface ProjectMeeting {
 export interface Customer {
   id: number;
   user_id: number;
-  user?: { id?: number; name: string; email?: string; company_name?: string };
+  user?: {
+    id?: number;
+    name: string;
+    email?: string;
+    company_name?: string;
+    company_id?: number;
+  };
   nickname: string;
   secret_code: string;
   name?: string;
   email?: string;
   phone?: string;
   address?: string;
+  company_id?: number;
   projects?: ProjectMeeting[]; // Array of multiple project meetings
   // Backward compatibility fields
   meeting_date?: string;
@@ -152,6 +159,79 @@ export interface Customer {
   is_active?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface LinkedProjectCard {
+  id?: number;
+  title: string;
+  developer?: string;
+  location?: string;
+  price?: string;
+  image_url?: string;
+  unit_types?: string;
+  area?: string;
+  possession?: string;
+  status?: string;
+  units_left?: number;
+  mask_identity?: boolean | number;
+  meeting_date?: string;
+  meeting_time?: string;
+  project_key?: string;
+  attempt_count?: number;
+  attempts_left?: number;
+  is_locked?: boolean;
+}
+
+export interface CustomerProjectLink {
+  id: number;
+  user_id: number;
+  customer_id: number;
+  public_token: string;
+  selected_projects: LinkedProjectCard[];
+  liked_projects?: LinkedProjectCard[];
+  mask_identity?: boolean;
+  card_attempts?: Record<string, number>;
+  locked_project_keys?: string[];
+  expires_at?: string;
+  is_disabled?: boolean;
+  disabled_at?: string;
+  status: string;
+  sent_at?: string;
+  opened_at?: string;
+  last_interaction_at?: string;
+  created_at: string;
+  customer?: {
+    id: number;
+    nickname?: string;
+    name?: string;
+    phone?: string;
+    secret_code?: string;
+  };
+  user?: {
+    id: number;
+    name?: string;
+    company_name?: string;
+  };
+}
+
+export interface PublicCustomerProjectLink {
+  id: number;
+  public_token: string;
+  status: string;
+  selected_projects: LinkedProjectCard[];
+  liked_projects?: LinkedProjectCard[];
+  mask_identity?: boolean;
+  expires_at?: string;
+  is_disabled?: boolean;
+  max_attempts_per_card?: number;
+  locked_project_keys?: string[];
+  customer?: {
+    id: number;
+    nickname?: string;
+    name?: string;
+    phone?: string;
+    secret_code?: string;
+  };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -381,7 +461,10 @@ export const CompanyUserAPI = {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export const CustomerAPI = {
-  list: () => apiFetch<{ data: Customer[]; total: number }>("/customers"),
+  list: (companyId?: number) => {
+    const params = companyId ? `?company_id=${companyId}` : "";
+    return apiFetch<{ data: Customer[]; total: number }>(`/customers${params}`);
+  },
 
   upcoming: () => apiFetch<{ data: Customer[] }>("/customers/upcoming"),
 
@@ -465,6 +548,67 @@ export const CustomerAPI = {
       },
     ),
 };
+
+export const CustomerProjectLinkAPI = {
+  create: (data: {
+    customer_id: number;
+    selected_projects: LinkedProjectCard[];
+    mask_identity?: boolean;
+  }) =>
+    apiFetch<{ message: string; data: CustomerProjectLink }>(
+      "/customer-project-links",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    ),
+
+  byCustomer: (customerId: number) =>
+    apiFetch<{ data: CustomerProjectLink[]; total: number }>(
+      `/customer-project-links/customer/${customerId}`,
+    ),
+
+  removeSelectedProject: (linkId: number, projectTitle: string) =>
+    apiFetch<{ message: string; data: CustomerProjectLink }>(
+      `/customer-project-links/${linkId}/projects/${encodeURIComponent(projectTitle)}`,
+      {
+        method: "DELETE",
+      },
+    ),
+
+  publicShow: (token: string) =>
+    apiFetch<{ data: PublicCustomerProjectLink }>(
+      `/public/customer-project-links/${token}`,
+    ),
+
+  publicLike: (
+    token: string,
+    liked_projects: LinkedProjectCard[],
+    attempt_project_key?: string,
+  ) =>
+    apiFetch<{
+      message: string;
+      data: {
+        id: number;
+        status: string;
+        liked_projects: LinkedProjectCard[];
+        expires_at?: string;
+        is_disabled?: boolean;
+        max_attempts_per_card?: number;
+        locked_project_keys?: string[];
+      };
+    }>(`/public/customer-project-links/${token}/like`, {
+      method: "POST",
+      body: JSON.stringify({ liked_projects, attempt_project_key }),
+    }),
+
+  publicUrl: (token: string) => {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const base =
+      appUrl || (typeof window !== "undefined" ? window.location.origin : "");
+    return `${base}/customer-link/${token}`;
+  },
+};
 // lib/api.ts - Add these lines
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -475,7 +619,7 @@ export interface ProjectRequest {
   id: number;
   user_id: number;
   developer_name: string;
-  project_name: string;
+  project_name?: string;
   manager_name: string;
   manager_phone: string;
   manager_email: string;
@@ -495,7 +639,7 @@ export interface ProjectRequest {
 
 export interface CreateProjectRequestPayload {
   developer_name: string;
-  project_name: string;
+  project_name?: string;
   manager_name: string;
   manager_phone: string;
   manager_email: string;

@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 
 interface HeaderProps {
   variant?: "landing" | "app" | "auth";
@@ -13,6 +14,7 @@ interface HeaderProps {
 
 export default function Header({ variant = "landing" }: HeaderProps) {
   const { user, logout } = useAuth();
+  const { cartCount } = useCart();
   const router = useRouter();
   const pathname = usePathname();
   const [dropOpen, setDropOpen] = useState(false);
@@ -224,6 +226,32 @@ export default function Header({ variant = "landing" }: HeaderProps) {
                 />
               </svg>
             </button>
+
+            {/* Cart button */}
+            {cartCount > 0 && (
+              <button
+                onClick={() => router.push("/cart")}
+                className="relative flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:bg-white/12"
+                style={{ background: "rgba(255,255,255,0.08)" }}
+                title="Go to cart"
+              >
+                <span style={{ fontSize: "1.25rem" }}>🛒</span>
+                <span
+                  className="absolute flex items-center justify-center text-xs font-bold text-white"
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    background: "#ef4444",
+                    borderRadius: "50%",
+                    border: "2px solid white",
+                    top: "-6px",
+                    right: "-6px",
+                  }}
+                >
+                  {cartCount}
+                </span>
+              </button>
+            )}
 
             {/* Avatar button */}
             <button

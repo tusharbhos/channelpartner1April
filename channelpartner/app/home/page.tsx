@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SearchBar from "@/components/SearchBar";
@@ -330,10 +331,12 @@ function AutoPlayVideo({ src }: { src: string }) {
 function ProjectCardUI({
   project,
   onSchedule,
+  onAddToCart,
   demoVideo,
 }: {
   project: ApiProject;
   onSchedule: (name: string) => void;
+  onAddToCart: (project: ApiProject) => void;
   demoVideo: (typeof PROJECT_DEMO_VIDEOS)[number];
 }) {
   const title = normalize(project.title) || "Untitled Project";
@@ -571,9 +574,21 @@ function ProjectCardUI({
           >
             {status}
           </span>
-          </div>
-        <div className="flex items-center w-full mt-auto pt-1">
-
+        </div>
+        <div className="flex items-center w-full mt-auto pt-1 gap-2">
+          <button
+            onClick={() => onAddToCart(project)}
+            className="btn btn-primary"
+            style={{
+              fontSize: "0.7rem",
+              padding: "0.34rem 0.55rem",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+            title="Add this project to customer cart"
+          >
+            Add To Cart
+          </button>
           <button
             onClick={() => onSchedule(title)}
             className="btn btn-gold w-full"
@@ -868,6 +883,7 @@ function ProjectApprovalHubModal({
 ══════════════════════════════════════════════════ */
 export default function HomePage() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { addToCart, cartCount } = useCart();
   const router = useRouter();
 
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
@@ -1269,6 +1285,24 @@ export default function HomePage() {
     setTimeout(() => setToast(""), 3500);
   };
 
+  const handleAddToCart = (project: ApiProject) => {
+    const title = normalize(project.title) || "Untitled Project";
+    const image_url =
+      mediaUrl(project.background_image_mobile) ||
+      mediaUrl(project.background_image_desktop) ||
+      mediaUrl(project.main_logo) ||
+      "";
+
+    addToCart({
+      id: project.id,
+      title,
+      image_url,
+    });
+
+    setToast(`"${title}" added to cart! 🛒`);
+    setTimeout(() => setToast(""), 3000);
+  };
+
   const loadApprovalProjects = useCallback(async () => {
     try {
       setApprovalLoading(true);
@@ -1650,6 +1684,7 @@ export default function HomePage() {
                       PROJECT_DEMO_VIDEOS[index % PROJECT_DEMO_VIDEOS.length]
                     }
                     onSchedule={handleSchedule}
+                    onAddToCart={handleAddToCart}
                   />
                 ))}
 
@@ -1756,6 +1791,68 @@ export default function HomePage() {
 
         <Footer />
       </main>
+
+      {/* Floating Cart Button */}
+      {cartCount > 0 && (
+        <button
+          onClick={() => router.push("/cart")}
+          title="Go to shopping cart"
+          style={{
+            position: "fixed",
+            bottom: cartCount > 0 && showApprovalPrompt ? "220px" : "1.5rem",
+            right: "1.5rem",
+            zIndex: 9997,
+            width: "56px",
+            height: "56px",
+            borderRadius: "50%",
+            background: "var(--gradient-primary)",
+            border: "none",
+            cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.transform =
+              "scale(1.1)";
+            (e.currentTarget as HTMLButtonElement).style.boxShadow =
+              "0 6px 20px rgba(0,0,0,0.2)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+            (e.currentTarget as HTMLButtonElement).style.boxShadow =
+              "0 4px 12px rgba(0,0,0,0.15)";
+          }}
+        >
+          <div style={{ position: "relative" }}>
+            <span style={{ fontSize: "1.5rem" }}>🛒</span>
+            {cartCount > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: "-8px",
+                  right: "-8px",
+                  background: "#ef4444",
+                  color: "#fff",
+                  width: "24px",
+                  height: "24px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.75rem",
+                  fontWeight: "bold",
+                  border: "2px solid #fff",
+                }}
+              >
+                {cartCount}
+              </span>
+            )}
+          </div>
+        </button>
+      )}
     </div>
   );
 }

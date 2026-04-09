@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ActivationRequestController;
 use App\Http\Controllers\Api\CompanyUserController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\CustomerProjectLinkController;
 use App\Http\Controllers\Api\ProjectRequestController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,8 @@ Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
 
 // Public: activation request can be submitted without login
 Route::post('activation-requests', [ActivationRequestController::class, 'store']);
+Route::get('public/customer-project-links/{token}', [CustomerProjectLinkController::class, 'publicShow']);
+Route::post('public/customer-project-links/{token}/like', [CustomerProjectLinkController::class, 'publicLike']);
 
 // ── Authenticated routes ──────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -59,6 +62,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/project-meetings',  [CustomerController::class, 'getProjectMeetings']);
         Route::put('/{id}/project-meetings/{projectName}', [CustomerController::class, 'updateProjectMeeting']);
         Route::delete('/{id}/project-meetings/{projectName}', [CustomerController::class, 'deleteProjectMeeting']);
+    });
+
+    Route::prefix('customer-project-links')->group(function () {
+        Route::post('/', [CustomerProjectLinkController::class, 'store']);
+        Route::get('/customer/{customerId}', [CustomerProjectLinkController::class, 'byCustomer']);
+        Route::delete('/{id}/projects/{projectTitle}', [CustomerProjectLinkController::class, 'removeSelectedProject']);
     });
 
     // ── Activation Requests (authenticated user approvals) ──────────────

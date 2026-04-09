@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { CustomerAPI, Customer } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 interface Props {
   onClose: () => void;
@@ -10,11 +11,39 @@ interface Props {
 }
 
 export default function AddCustomerModal({ onClose, onAdded }: Props) {
+  const { user } = useAuth();
   const [nickname, setNickname] = useState("");
   const [secretCode, setSecretCode] = useState("");
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const buildPrefixFromUser = (): string => {
+    const fullName = user?.name?.trim() || "";
+    const words = fullName.split(/\s+/).filter(Boolean);
+
+    if (words.length >= 2) {
+      const first = words[0].replace(/[^a-zA-Z0-9]/g, "").slice(0, 2);
+      const second = words[1].replace(/[^a-zA-Z0-9]/g, "").slice(0, 2);
+      const prefix = `${first}${second}`.toUpperCase();
+      return prefix || "CP";
+    }
+
+    if (words.length === 1) {
+      const prefix = words[0].replace(/[^a-zA-Z0-9]/g, "").slice(0, 2);
+      return (prefix || "CP").toUpperCase();
+    }
+
+    return "CP";
+  };
+
+  const applyPrefixToCode = (rawCode: string, prefix: string): string => {
+    const parts = rawCode.split("-");
+    if (parts.length > 1) {
+      return `${prefix}-${parts.slice(1).join("-")}`;
+    }
+    return `${prefix}-${rawCode}`;
+  };
 
   useEffect(() => {
     generateCode();
@@ -23,16 +52,17 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
   const generateCode = async () => {
     setGenerating(true);
     setError("");
+    const prefix = buildPrefixFromUser();
     try {
       const res = await CustomerAPI.generateCode();
-      setSecretCode(res.secret_code);
+      setSecretCode(applyPrefixToCode(res.secret_code, prefix));
     } catch {
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
       const code = Array.from(
         { length: 8 },
         () => chars[Math.floor(Math.random() * chars.length)],
       ).join("");
-      setSecretCode(`CP-${code}`);
+      setSecretCode(`${prefix}-${code}`);
     } finally {
       setGenerating(false);
     }
@@ -93,7 +123,7 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
           {error && (
             <div className="alert alert-danger">
               <svg
-                className="w-4 h-4 flex-shrink-0"
+                className="w-4 h-4 shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -179,7 +209,7 @@ export default function AddCustomerModal({ onClose, onAdded }: Props) {
           {/* Info */}
           <div className="alert alert-info">
             <svg
-              className="w-4 h-4 flex-shrink-0 mt-0.5"
+              className="w-4 h-4 shrink-0 mt-0.5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

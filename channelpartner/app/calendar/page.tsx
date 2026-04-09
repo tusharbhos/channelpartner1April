@@ -287,6 +287,13 @@ function AddMeetingModal({
 
   const handleSave = async () => {
     setError("");
+    const todayStr = new Date().toISOString().split("T")[0];
+    if (date < todayStr) {
+      setError(
+        "Cannot schedule a meeting for a past date. Please choose today or a future date.",
+      );
+      return;
+    }
     if (!selCustomerId) {
       setError("Please select a customer.");
       return;
@@ -442,12 +449,13 @@ function AddMeetingModal({
                   style={{ marginTop: "0.35rem" }}
                 >
                   <option value="">— Choose a customer —</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nickname}
-                      {c.name ? ` (${c.name})` : ""} · {c.secret_code}
-                    </option>
-                  ))}
+                  {customers.map((c) => {
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {c.secret_code}
+                      </option>
+                    );
+                  })}
                 </select>
                 <button
                   onClick={() => setShowCreateCustomer(true)}
@@ -1048,7 +1056,7 @@ export default function CalendarPage() {
                       key={i}
                       className="cal-cell"
                       onClick={() => {
-                        if (isValid && dateStr) setAddDate(dateStr);
+                        if (isValid && dateStr && !isPast) setAddDate(dateStr);
                       }}
                       style={{
                         background: !isValid
@@ -1064,7 +1072,7 @@ export default function CalendarPage() {
                         borderBottom: isLastRow
                           ? "none"
                           : "1px solid var(--slate-100)",
-                        cursor: isValid ? "pointer" : "default",
+                        cursor: !isValid || isPast ? "default" : "pointer",
                         transition: "background 0.15s",
                         position: "relative",
                       }}

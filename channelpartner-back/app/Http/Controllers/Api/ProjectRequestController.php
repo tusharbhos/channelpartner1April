@@ -16,7 +16,6 @@ class ProjectRequestController extends Controller
     {
         $validated = $request->validate([
             'developer_name' => ['required', 'string', 'max:255'],
-            'project_name'   => ['required', 'string', 'max:255'],
             'manager_name'   => ['required', 'string', 'max:255'],
             'manager_phone'  => ['required', 'string', 'regex:/^\d{10}$/'],
             'manager_email'  => ['required', 'email', 'max:255'],
@@ -29,7 +28,6 @@ class ProjectRequestController extends Controller
         $projectRequest = ProjectRequest::create([
             'user_id'        => $user->id,
             'developer_name' => $validated['developer_name'],
-            'project_name'   => $validated['project_name'],
             'manager_name'   => $validated['manager_name'],
             'manager_phone'  => $validated['manager_phone'],
             'manager_email'  => $validated['manager_email'],
@@ -37,7 +35,7 @@ class ProjectRequestController extends Controller
         ]);
 
         // Log the request for admin tracking
-        Log::info("New project request from user {$user->id}: {$projectRequest->project_name}");
+        Log::info("New project request from user {$user->id}: {$projectRequest->developer_name}");
 
         // Here you could also:
         // 1. Send notification to admin
@@ -84,10 +82,9 @@ class ProjectRequestController extends Controller
 
         // Search by project name or developer
         if ($search = $request->get('search')) {
-            $query->where(function($q) use ($search) {
-                $q->where('project_name', 'like', "%{$search}%")
-                  ->orWhere('developer_name', 'like', "%{$search}%")
-                  ->orWhere('manager_name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('developer_name', 'like', "%{$search}%")
+                    ->orWhere('manager_name', 'like', "%{$search}%");
             });
         }
 
@@ -110,19 +107,19 @@ class ProjectRequestController extends Controller
 
         // Update status with timestamps
         $projectRequest->status = $validated['status'];
-        
+
         if ($validated['status'] === 'contacted' && !$projectRequest->contacted_at) {
             $projectRequest->contacted_at = now();
         }
-        
+
         if ($validated['status'] === 'activated' && !$projectRequest->activated_at) {
             $projectRequest->activated_at = now();
         }
-        
+
         if (isset($validated['notes'])) {
             $projectRequest->notes = $validated['notes'];
         }
-        
+
         $projectRequest->save();
 
         return response()->json([

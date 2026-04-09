@@ -72,9 +72,6 @@ class CustomerController extends Controller
         }
 
         $nickname = trim((string) ($v['nickname'] ?? ''));
-        if ($nickname === '') {
-            $nickname = 'Customer ' . substr($secretCode, 3);
-        }
 
         $customer = Customer::create([
             ...$v,
@@ -255,14 +252,16 @@ class CustomerController extends Controller
             return;
         }
 
-        // Any company member can access company-level customers for shared workflows
-        // like project scheduling and assignment.
-        if ($user->company_id) {
+        // Role matrix:
+        // - Admin: all customers
+        // - User (company owner): own + company users' customers
+        // - Company User: only own customers
+        if ($user->company_id && $user->is_company_owner) {
             $query->whereHas('user', fn($u) => $u->where('company_id', $user->company_id));
             return;
         }
 
-        // Non-company users see only their own customers.
+        // Non-owner users (including company users) see only their own customers.
         $query->where('user_id', $user->id);
     }
 

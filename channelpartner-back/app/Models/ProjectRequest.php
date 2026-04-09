@@ -14,7 +14,6 @@ class ProjectRequest extends Model
     protected $fillable = [
         'user_id',
         'developer_name',
-        'project_name',
         'manager_name',
         'manager_phone',
         'manager_email',

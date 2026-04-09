@@ -11,43 +11,7 @@ import React, {
 } from "react";
 import { AuthAPI, ApiUser, getToken, setToken, removeToken } from "@/lib/api";
 
-interface User {
-  id: number;
-  company_id?: number;
-  name: string;
-  email: string;
-  company_name: string;
-  company_size?: string;
-  profile_image?: string;
-  profile_image_url?: string;
-  rera_no?: string;
-  phone?: string;
-  city?: string;
-  address?: string;
-  role: "user" | "admin";
-  is_company_owner?: boolean;
-  email_verified: boolean;
-  is_active: boolean;
-  experience_level?: string;
-  primary_market?: string[];
-  budget_segments?: string[];
-  max_ticket_size?: string | number;
-  buyer_types?: string[];
-  project_preference?: string[];
-  micro_markets?: string;
-  sell_cities?: string;
-  avg_leads_per_month?: number;
-  avg_site_visits_per_month?: number;
-  avg_closures_per_month?: number;
-  selling_style?: string[];
-  activation_intent?:
-    | "immediately"
-    | "in_7_days"
-    | "in_15_plus_days"
-    | "exploring";
-  commitment_signal?: boolean;
-  onboarding_step?: number;
-}
+type User = ApiUser;
 
 interface AuthContextType {
   user: User | null;

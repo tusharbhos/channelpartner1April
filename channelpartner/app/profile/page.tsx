@@ -416,12 +416,18 @@ export default function ProfilePage() {
   const saveStep = async (targetStep?: Step) => {
     if (!user) return;
 
+    const normalizedPhone = form.phone.replace(/\D/g, "").slice(0, 10);
+    if (normalizedPhone.length !== 10) {
+      setMessage("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+
     const payload = new FormData();
     payload.append("name", form.name);
     payload.append("company_name", form.company_name);
     if (form.company_size) payload.append("company_size", form.company_size);
     payload.append("rera_no", form.rera_no);
-    payload.append("phone", form.phone);
+    payload.append("phone", normalizedPhone);
     payload.append("city", form.city);
     payload.append("address", form.address);
     if (form.experience_level)
@@ -467,8 +473,21 @@ export default function ProfilePage() {
         setStep(3);
         setShowSummary(true);
       }
-    } catch {
-      setMessage("Save failed. Please try again.");
+    } catch (error: unknown) {
+      const e = error as {
+        message?: string;
+        errors?: Record<string, string[]>;
+      };
+
+      if (e.errors && typeof e.errors === "object") {
+        const firstKey = Object.keys(e.errors)[0];
+        if (firstKey && e.errors[firstKey]?.[0]) {
+          setMessage(e.errors[firstKey][0]);
+          return;
+        }
+      }
+
+      setMessage(e.message || "Save failed. Please try again.");
     } finally {
       setSaving(false);
     }

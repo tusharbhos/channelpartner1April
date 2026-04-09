@@ -9,7 +9,14 @@ import Footer from "@/components/Footer";
 import AddCustomerModal from "@/components/AddCustomerModal";
 import EditCustomerModal from "@/components/EditCustomerModal";
 import ViewCustomerModal from "@/components/ViewCustomerModal";
-import { CustomerAPI, Customer, ProjectMeeting } from "@/lib/api";
+import {
+  CustomerAPI,
+  Customer,
+  CustomerProjectLink,
+  CustomerProjectLinkAPI,
+  LinkedProjectCard,
+  ProjectMeeting,
+} from "@/lib/api";
 
 function safeProjects(projects: unknown): ProjectMeeting[] {
   return Array.isArray(projects) ? (projects as ProjectMeeting[]) : [];
@@ -182,6 +189,628 @@ function IconTrash() {
   );
 }
 
+function IconUserCard() {
+  return (
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8 10a2 2 0 104 0 2 2 0 00-4 0zm8 5a3 3 0 00-6 0"
+      />
+    </svg>
+  );
+}
+
+function fmt12(t: string) {
+  if (!t) return "";
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+}
+
+const TIME_SLOTS = Array.from({ length: 29 }, (_, i) => {
+  const mins = 7 * 60 + i * 30;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  const val = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return { val, label: fmt12(val) };
+});
+
+const DATE_OPTIONS = Array.from({ length: 60 }, (_, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() + i);
+  const val = d.toISOString().split("T")[0];
+  const label = d.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return { val, label };
+});
+
+function LinkPreviewModal({
+  customer,
+  links,
+  loading,
+  onCustomerUpdated,
+  onClose,
+}: {
+  customer: Customer | null;
+  links: CustomerProjectLink[];
+  loading: boolean;
+  onCustomerUpdated?: (customer: Customer) => void;
+  onClose: () => void;
+}) {
+  if (!customer) return null;
+
+  const latestLink = links[0] ?? null;
+  const [recipientPhone, setRecipientPhone] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [schedulingKey, setSchedulingKey] = useState("");
+  const [scheduleMsg, setScheduleMsg] = useState("");
+  const [scheduleErr, setScheduleErr] = useState("");
+  const [schedulePopup, setSchedulePopup] = useState<{
+    project: LinkedProjectCard;
+    idx: number;
+    meetingDate: string;
+    meetingTime: string;
+  } | null>(null);
+
+  useEffect(() => {
+    setRecipientPhone((customer.phone || "").replace(/\D/g, ""));
+    setRecipientEmail((customer.email || "").trim());
+  }, [customer.id, customer.phone, customer.email]);
+
+  const publicLink = latestLink
+    ? CustomerProjectLinkAPI.publicUrl(latestLink.public_token)
+    : "";
+  const customerPhone = recipientPhone.replace(/\D/g, "");
+  const customerEmail = recipientEmail.trim();
+  const hasEmail = customerEmail.length > 0;
+  const shareText = `Hi ${customer.name || customer.nickname || "Customer"}, here is your project link:\n${publicLink}`;
+
+  const openSchedulePopup = (project: LinkedProjectCard, idx: number) => {
+    setScheduleErr("");
+    setScheduleMsg("");
+    setSchedulePopup({
+      project,
+      idx,
+      meetingDate: project.meeting_date || "",
+      meetingTime: project.meeting_time || "",
+    });
+  };
+
+  const submitScheduleMeeting = async () => {
+    if (!schedulePopup) return;
+
+    const { project, idx, meetingDate, meetingTime } = schedulePopup;
+    const projectName = (project.title || "").trim();
+    if (!projectName) {
+      setScheduleErr("Project name missing. Cannot schedule meeting.");
+      return;
+    }
+    if (!meetingDate || !meetingTime) {
+      setScheduleErr(
+        "Date and time are required on liked project to schedule.",
+      );
+      return;
+    }
+
+    const rowKey = `${projectName}-${idx}`;
+    setSchedulingKey(rowKey);
+    setScheduleErr("");
+    setScheduleMsg("");
+
+    try {
+      const existingMeeting = safeProjects(customer.projects).find(
+        (p) => p.project_name === projectName,
+      );
+
+      const res = existingMeeting
+        ? await CustomerAPI.updateProjectMeeting(customer.id, projectName, {
+            meeting_date: meetingDate,
+            meeting_time: meetingTime,
+          })
+        : await CustomerAPI.scheduleMeeting(customer.id, {
+            project_name: projectName,
+            meeting_date: meetingDate,
+            meeting_time: meetingTime,
+          });
+
+      if (res?.data && onCustomerUpdated) {
+        onCustomerUpdated(res.data);
+      }
+      setScheduleMsg(
+        existingMeeting
+          ? `Meeting updated for ${projectName}.`
+          : `Meeting scheduled for ${projectName}.`,
+      );
+      setSchedulePopup(null);
+    } catch (e: unknown) {
+      setScheduleErr(
+        (e as { message?: string }).message || "Failed to schedule meeting.",
+      );
+    } finally {
+      setSchedulingKey("");
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal-box"
+        style={{ maxWidth: "72rem", width: "min(72rem, calc(100% - 1.2rem))" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-header">
+          <div>
+            <p className="modal-title">Customer Project Link Preview</p>
+            <p className="modal-subtitle">
+              {customer.nickname} ({customer.secret_code})
+            </p>
+          </div>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <div className="modal-body">
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <div className="spinner spinner-lg" />
+            </div>
+          ) : !latestLink ? (
+            <div className="alert alert-info">
+              No project link sent for this customer yet.
+            </div>
+          ) : (
+            <>
+              {scheduleErr && !schedulePopup && (
+                <div className="alert alert-danger mb-3">{scheduleErr}</div>
+              )}
+              {scheduleMsg && (
+                <div className="alert alert-success mb-3">{scheduleMsg}</div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                <div
+                  className="card p-3"
+                  style={{ borderRadius: "var(--radius-lg)" }}
+                >
+                  <p
+                    className="text-xs font-bold"
+                    style={{ color: "var(--navy-700)" }}
+                  >
+                    Customer Card
+                  </p>
+                  <p
+                    className="font-bold mt-2"
+                    style={{ color: "var(--navy-900)" }}
+                  >
+                    {customer.name || customer.nickname}
+                  </p>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
+                    Nickname: {customer.nickname}
+                  </p>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
+                    Code: {customer.secret_code}
+                  </p>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
+                    Phone: {customer.phone || "-"}
+                  </p>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
+                    Email: {customer.email || "-"}
+                  </p>
+                </div>
+
+                <div
+                  className="card p-3 lg:col-span-2"
+                  style={{ borderRadius: "var(--radius-lg)" }}
+                >
+                  <p
+                    className="text-xs font-bold"
+                    style={{ color: "var(--navy-700)" }}
+                  >
+                    Public Link
+                  </p>
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    <input
+                      className="input-field"
+                      readOnly
+                      title="Public customer link"
+                      aria-label="Public customer link"
+                      value={publicLink}
+                    />
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => navigator.clipboard.writeText(publicLink)}
+                    >
+                      Copy
+                    </button>
+                    <button
+                      className="btn btn-gold"
+                      onClick={() => window.open(publicLink, "_blank")}
+                    >
+                      Open
+                    </button>
+                    <button
+                      className="btn"
+                      style={{
+                        background: "#16a34a",
+                        color: "#fff",
+                        opacity: customerPhone ? 1 : 0.6,
+                        cursor: customerPhone ? "pointer" : "not-allowed",
+                      }}
+                      disabled={!customerPhone}
+                      onClick={() => {
+                        if (!customerPhone) return;
+                        const whatsappUrl = `https://wa.me/91${customerPhone}?text=${encodeURIComponent(shareText)}`;
+                        window.open(whatsappUrl, "_blank");
+                      }}
+                    >
+                      WhatsApp
+                    </button>
+                    <button
+                      className="btn"
+                      style={{
+                        background: "#ea580c",
+                        color: "#fff",
+                        opacity: hasEmail ? 1 : 0.6,
+                        cursor: hasEmail ? "pointer" : "not-allowed",
+                      }}
+                      disabled={!hasEmail}
+                      onClick={() => {
+                        if (!hasEmail) return;
+                        const subject = "Your Project Link";
+                        const body = `${shareText}\n\nRegards`;
+                        const mailUrl = `mailto:${customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                        window.location.href = mailUrl;
+                      }}
+                    >
+                      Email
+                    </button>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                      <label
+                        className="text-xs font-bold"
+                        style={{ color: "var(--navy-700)" }}
+                      >
+                        WhatsApp Number
+                      </label>
+                      <input
+                        className="input-field mt-1"
+                        type="tel"
+                        placeholder="Enter phone number"
+                        value={recipientPhone}
+                        onChange={(e) => setRecipientPhone(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="text-xs font-bold"
+                        style={{ color: "var(--navy-700)" }}
+                      >
+                        Email Address
+                      </label>
+                      <input
+                        className="input-field mt-1"
+                        type="email"
+                        placeholder="Enter email address"
+                        value={recipientEmail}
+                        onChange={(e) => setRecipientEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                  <p
+                    className="text-xs font-bold mb-2"
+                    style={{ color: "var(--navy-700)" }}
+                  >
+                    Left Side: Added Project Cards
+                  </p>
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {(latestLink.selected_projects || []).map(
+                      (project, idx) => (
+                        <div
+                          key={`${project.title}-${idx}`}
+                          className="card p-3"
+                          style={{ borderRadius: "var(--radius-md)" }}
+                        >
+                          <p
+                            className="font-bold text-sm"
+                            style={{ color: "var(--navy-900)" }}
+                          >
+                            {project.title}
+                          </p>
+                          <p
+                            className="text-xs"
+                            style={{ color: "var(--color-text-muted)" }}
+                          >
+                            {project.developer || "-"}
+                          </p>
+                          <p
+                            className="text-xs"
+                            style={{ color: "var(--color-text-hint)" }}
+                          >
+                            {project.location || "-"}
+                          </p>
+                          <p
+                            className="text-sm font-semibold mt-1"
+                            style={{ color: "var(--orange-600)" }}
+                          >
+                            {project.price || "-"}
+                          </p>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p
+                    className="text-xs font-bold mb-2"
+                    style={{ color: "var(--green-700)" }}
+                  >
+                    Right Side: Customer Liked Cards
+                  </p>
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {(latestLink.liked_projects || []).length > 0 ? (
+                      (latestLink.liked_projects || []).map((project, idx) => {
+                        const projectName = (project.title || "").trim();
+                        const rowKey = `${project.title}-${idx}`;
+                        const isAlreadyScheduled = safeProjects(
+                          customer.projects,
+                        ).some(
+                          (p) =>
+                            (p.project_name || "").trim().toLowerCase() ===
+                            projectName.toLowerCase(),
+                        );
+
+                        const canSchedule =
+                          Boolean(
+                            project.meeting_date && project.meeting_time,
+                          ) &&
+                          !isAlreadyScheduled &&
+                          schedulingKey !== rowKey;
+
+                        return (
+                          <div
+                            key={rowKey}
+                            className="card p-3"
+                            style={{
+                              borderRadius: "var(--radius-md)",
+                              border: "1px solid #86efac",
+                              background: "#f0fdf4",
+                            }}
+                          >
+                            <p
+                              className="font-bold text-sm"
+                              style={{ color: "#166534" }}
+                            >
+                              {project.title}
+                            </p>
+                            <p className="text-xs" style={{ color: "#15803d" }}>
+                              {project.developer || "-"}
+                            </p>
+                            <p className="text-xs" style={{ color: "#166534" }}>
+                              {project.location || "-"}
+                            </p>
+                            <p
+                              className="text-sm font-semibold mt-1"
+                              style={{ color: "#15803d" }}
+                            >
+                              {project.price || "-"}
+                            </p>
+                            {(project.meeting_date || project.meeting_time) && (
+                              <p
+                                className="text-xs font-semibold mt-1"
+                                style={{ color: "#166534" }}
+                              >
+                                Visit: {project.meeting_date || "-"}
+                                {project.meeting_time
+                                  ? ` at ${project.meeting_time}`
+                                  : ""}
+                              </p>
+                            )}
+                            <button
+                              className="btn btn-primary mt-2"
+                              style={{
+                                width: "100%",
+                                opacity: canSchedule ? 1 : 0.65,
+                                cursor: canSchedule ? "pointer" : "not-allowed",
+                                background: isAlreadyScheduled
+                                  ? "#16a34a"
+                                  : undefined,
+                              }}
+                              disabled={!canSchedule}
+                              onClick={() => openSchedulePopup(project, idx)}
+                            >
+                              {schedulingKey === rowKey
+                                ? "Scheduling..."
+                                : isAlreadyScheduled
+                                  ? "Meeting Scheduled"
+                                  : "Schedule Meeting"}
+                            </button>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div
+                        className="card p-3 text-sm"
+                        style={{ color: "var(--color-text-hint)" }}
+                      >
+                        Customer has not liked any project yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {schedulePopup && (
+          <div
+            className="modal-overlay"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSchedulePopup(null);
+            }}
+          >
+            <div
+              className="modal-box"
+              style={{
+                maxWidth: "32rem",
+                width: "min(32rem, calc(100% - 1.2rem))",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <div>
+                  <p className="modal-title">Schedule Meeting</p>
+                  <p className="modal-subtitle">Confirm meeting details</p>
+                </div>
+                <button
+                  className="modal-close"
+                  onClick={() => setSchedulePopup(null)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="modal-body">
+                {scheduleErr && (
+                  <div className="alert alert-danger mb-3">{scheduleErr}</div>
+                )}
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="label">Customer Code</label>
+                    <input
+                      className="input-field"
+                      value={customer.secret_code}
+                      readOnly
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Project Name</label>
+                    <input
+                      className="input-field"
+                      value={schedulePopup.project.title || ""}
+                      readOnly
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">Meeting Date</label>
+                      <select
+                        className="input-field"
+                        value={schedulePopup.meetingDate}
+                        onChange={(e) =>
+                          setSchedulePopup((prev) =>
+                            prev
+                              ? { ...prev, meetingDate: e.target.value }
+                              : prev,
+                          )
+                        }
+                      >
+                        <option value="">— Select a date —</option>
+                        {DATE_OPTIONS.map(({ val, label }) => (
+                          <option key={val} value={val}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label">
+                        Meeting Time{" "}
+                        <span
+                          className="text-gray-400"
+                          style={{ fontSize: "0.7rem" }}
+                        >
+                          (30-min slots)
+                        </span>
+                      </label>
+                      <select
+                        className="input-field"
+                        value={schedulePopup.meetingTime}
+                        onChange={(e) =>
+                          setSchedulePopup((prev) =>
+                            prev
+                              ? { ...prev, meetingTime: e.target.value }
+                              : prev,
+                          )
+                        }
+                      >
+                        <option value="">— Select a time —</option>
+                        {TIME_SLOTS.map(({ val, label }) => (
+                          <option key={val} value={val}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setSchedulePopup(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-gold"
+                  disabled={
+                    schedulingKey ===
+                    `${schedulePopup.project.title}-${schedulePopup.idx}`
+                  }
+                  onClick={submitScheduleMeeting}
+                >
+                  {schedulingKey ===
+                  `${schedulePopup.project.title}-${schedulePopup.idx}`
+                    ? "Scheduling..."
+                    : "Schedule Meeting"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -197,6 +826,11 @@ export default function DashboardPage() {
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [linkModalCustomer, setLinkModalCustomer] = useState<Customer | null>(
+    null,
+  );
+  const [linkRows, setLinkRows] = useState<CustomerProjectLink[]>([]);
+  const [linkLoading, setLinkLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace("/login");
@@ -233,6 +867,19 @@ export default function DashboardPage() {
       alert("Failed to archive customer.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const openLinkPreview = async (customer: Customer) => {
+    setLinkModalCustomer(customer);
+    setLinkLoading(true);
+    try {
+      const res = await CustomerProjectLinkAPI.byCustomer(customer.id);
+      setLinkRows(res.data || []);
+    } catch {
+      setLinkRows([]);
+    } finally {
+      setLinkLoading(false);
     }
   };
 
@@ -540,12 +1187,20 @@ export default function DashboardPage() {
                             <td>
                               <div className="flex gap-1">
                                 <button
-                                  onClick={() => setViewCustomer(c)}
-                                  title="View"
+                                  onClick={() => openLinkPreview(c)}
+                                  title="Project Link Preview"
                                   className="p-1.5 rounded-lg hover:bg-green-50 transition-colors"
                                   style={{ color: "#16a34a" }}
                                 >
                                   <IconEye />
+                                </button>
+                                <button
+                                  onClick={() => setViewCustomer(c)}
+                                  title="View Customer"
+                                  className="p-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
+                                  style={{ color: "#4f46e5" }}
+                                >
+                                  <IconUserCard />
                                 </button>
                                 <button
                                   onClick={() => setEditCustomer(c)}
@@ -631,7 +1286,7 @@ export default function DashboardPage() {
                     {/* Actions */}
                     <div className="flex gap-2 mt-3">
                       <button
-                        onClick={() => setViewCustomer(c)}
+                        onClick={() => openLinkPreview(c)}
                         className="btn flex-1 text-white"
                         style={{
                           fontSize: "0.78rem",
@@ -639,7 +1294,18 @@ export default function DashboardPage() {
                           padding: "0.5rem",
                         }}
                       >
-                        <IconEye /> View
+                        <IconEye /> Links
+                      </button>
+                      <button
+                        onClick={() => setViewCustomer(c)}
+                        className="btn flex-1 text-white"
+                        style={{
+                          fontSize: "0.78rem",
+                          background: "linear-gradient(135deg,#4f46e5,#4338ca)",
+                          padding: "0.5rem",
+                        }}
+                      >
+                        <IconUserCard /> View
                       </button>
                       <button
                         onClick={() => setEditCustomer(c)}
@@ -698,6 +1364,22 @@ export default function DashboardPage() {
           }}
         />
       )}
+
+      <LinkPreviewModal
+        customer={linkModalCustomer}
+        links={linkRows}
+        loading={linkLoading}
+        onCustomerUpdated={(u) => {
+          const n = normalise(u);
+          setCustomers((prev) => prev.map((c) => (c.id === n.id ? n : c)));
+          setLinkModalCustomer(n);
+        }}
+        onClose={() => {
+          setLinkModalCustomer(null);
+          setLinkRows([]);
+          setLinkLoading(false);
+        }}
+      />
 
       {/* Delete confirm */}
       {deleteId !== null && (

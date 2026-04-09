@@ -236,12 +236,13 @@ export default function ScheduleMeetingModal({
                 className="input-field mt-1"
               >
                 <option value="">— Choose a customer —</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nickname}
-                    {c.name ? ` (${c.name})` : ""} · {c.secret_code}
-                  </option>
-                ))}
+                {customers.map((c) => {
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.secret_code}
+                    </option>
+                  );
+                })}
               </select>
             )}
           </div>
