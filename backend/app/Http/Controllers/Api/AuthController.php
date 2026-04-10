@@ -12,11 +12,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -62,12 +64,26 @@ class AuthController extends Controller
             'is_company_owner' => ! $companyHasUsers,
         ]);
 
-        // Fire registered event → sends email verification for main/company-owner account.
-        event(new Registered($user));
+        $verificationEmailSent = true;
+
+        // Fire registered event -> sends email verification for main/company-owner account.
+        try {
+            event(new Registered($user));
+        } catch (Throwable $exception) {
+            $verificationEmailSent = false;
+            Log::error('User registered but verification email failed to send.', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $exception->getMessage(),
+            ]);
+        }
 
         return response()->json([
-            'message' => 'Registration successful! Please verify your email.',
+            'message' => $verificationEmailSent
+                ? 'Registration successful! Please verify your email.'
+                : 'Registration successful, but we could not send the verification email right now. Please request resend after mail setup.',
             'user'    => $this->formatUser($user),
+            'verification_email_sent' => $verificationEmailSent,
         ], 201);
     }
 
@@ -147,13 +163,24 @@ class AuthController extends Controller
             ]
         );
 
-        Mail::raw(
-            "Your ChannelPartner.Network password reset code is {$cpCode}. This code will expire in 15 minutes.",
-            function ($message) use ($email) {
-                $message->to($email)
-                    ->subject('ChannelPartner Password Reset Code');
-            }
-        );
+        try {
+            Mail::raw(
+                "Your ChannelPartner.Network password reset code is {$cpCode}. This code will expire in 15 minutes.",
+                function ($message) use ($email) {
+                    $message->to($email)
+                        ->subject('ChannelPartner Password Reset Code');
+                }
+            );
+        } catch (Throwable $exception) {
+            Log::error('Failed to send password reset code email.', [
+                'email' => $email,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Unable to send reset code email right now. Please try again in a moment.',
+            ], 500);
+        }
 
         return response()->json([
             'message' => 'Password reset code sent to your email.',
