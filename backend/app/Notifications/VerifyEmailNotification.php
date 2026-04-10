@@ -61,6 +61,14 @@ class VerifyEmailNotification extends Notification
 
         $frontendBase = rtrim((string) env('FRONTEND_URL', ''), '/');
         if ($frontendBase === '') {
+            $frontendUrls = array_values(array_filter(array_map(
+                static fn($value) => trim($value),
+                explode(',', (string) env('FRONTEND_URLS', ''))
+            )));
+            $frontendBase = rtrim((string) ($frontendUrls[0] ?? ''), '/');
+        }
+
+        if ($frontendBase === '') {
             return $signedApiUrl;
         }
 
